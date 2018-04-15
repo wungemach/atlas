@@ -56,5 +56,3 @@ export -f unpack_niigz
 
 # Runs unpack_niigz for every file that matches *.nii.gz in $DATA_DIR
 find $DATA_DIR -name "*.nii.gz" -type f -exec bash -c 'unpack_niigz {}' \;
-
-# python "$CODE_DIR/preprocessing/atlas_preprocess.py" --data_dir "$DATA_DIR"
