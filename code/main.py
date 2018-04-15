@@ -113,8 +113,6 @@ def main(_):
   #############################################################################
   # Train/dev split and model definition                                      #
   #############################################################################
-  train_dev_split = setup_train_dev_split(FLAGS)
-
   # Initializes model
   atlas_model = ATLASModel(FLAGS)
 
@@ -138,8 +136,7 @@ def main(_):
       initialize_model(sess, atlas_model, FLAGS.train_dir, expect_exists=False)
 
       # Trains model
-      atlas_model.train(
-        sess, train_context_path, train_qn_path, train_ans_path, dev_qn_path, dev_context_path, dev_ans_path)
+      atlas_model.train(sess, *setup_train_dev_split(FLAGS))
 
 
 if __name__ == "__main__":

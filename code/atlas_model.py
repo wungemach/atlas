@@ -6,12 +6,10 @@ import time
 import numpy as np
 import tensorflow as tf
 
-from models.official.resnet.resnet_model import Model as ResNet
-
 import utils
 
 from evaluate import exact_match_score, f1_score
-from data_batcher import get_batch_generator
+from data_batcher import SliceBatchGenerator
 
 logging.basicConfig(level=logging.INFO)
 
@@ -85,7 +83,7 @@ class ATLASModel(object):
     - self.predicted_mask_probs_op: A Tensor of the same shape as
       self.logits_op, passed through a sigmoid layer.
     """
-
+    # from models.official.resnet.resnet_model import Model as ResNet
     # encoder = ResNet(resnet_size=self.FLAGS.resnet_size,
     #                  bottleneck=self.FLAGS.resnet_size < 50,
     #                  num_classes=1,  # TODO: replace
@@ -241,10 +239,11 @@ class ATLASModel(object):
     """
     loss_per_batch, batch_sizes = [], []
 
+    sbg = SliceBatchGenerator(dev_input_paths,
+                              dev_target_mask_paths
+                              self.FLAGS.batch_size)
     # Iterates over dev set batches
-    for batch in get_batch_generator(dev_input_paths,
-                                     dev_target_mask_paths
-                                     self.FLAGS.batch_size):
+    for batch in sbg.get_batch():
       # Gets loss for this batch
       loss = self.get_loss(sess, batch)
       cur_batch_size = batch.batch_size
@@ -291,19 +290,22 @@ class ATLASModel(object):
     dice_coefficient_total = 0.
     num_examples = 0
 
-    for batch in get_batch_generator(input_paths,
-                                     target_mask_paths,
-                                     self.FLAGS.batch_size):
+    sbg = SliceBatchGenerator(input_paths,
+                              target_mask_paths
+                              self.FLAGS.batch_size)
+    for batch in sbg.get_batch():
       predicted_masks = self.get_predicted_masks(sess, batch)
 
       # Convert the start and end positions to lists length batch_size
       pred_start_pos = pred_start_pos.tolist() # list length batch_size
       pred_end_pos = pred_end_pos.tolist() # list length batch_size
 
-      for idx, (predicted_mask, target_mask) in enumerate(zip(predicted_masks, batch.target_masks)):
+      zipped_masks = zip(predicted_masks, batch.target_masks)
+      for idx, (predicted_mask, target_mask) in enumerate(zipped_masks):
         num_examples += 1
 
-        dice_coefficient_total += dice_coefficient(predicted_mask, target_mask)
+        dice_coefficient_total += \
+          utils.dice_coefficient(predicted_mask, target_mask)
 
         # Optionally plot
         if plot:
@@ -352,9 +354,10 @@ class ATLASModel(object):
       epoch += 1
 
       # Loops over batches
-      for batch in get_batch_generator(train_input_paths,
-                                       train_target_mask_paths,
-                                       self.FLAGS.batch_size):
+      sbg = SliceBatchGenerator(train_input_paths,
+                                train_target_mask_paths
+                                self.FLAGS.batch_size)
+      for batch in sbg.get_batch():
         # Runs training iteration
         loss, global_step, param_norm, grad_norm =\
           self.run_train_iter(sess, batch, summary_writer)
@@ -407,7 +410,7 @@ class ATLASModel(object):
             f"global_step {global_step}, "
             f"dev dice_coefficient: {dev_dice}")
           write_summary(dev_dice, "dev/dice", summary_writer, global_step)
-      # end for batch in get_batch_generator
+      # end for batch in sbg.get_batch
     # end while self.FLAGS.num_epochs == 0 or epoch < self.FLAGS.num_epochs
     sys.stdout.flush()
 

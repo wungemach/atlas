@@ -1,3 +1,11 @@
+import numpy as np
+
+def dice_coefficient(predicted_mask, target_mask):
+  tp = np.sum(np.logical_and(predicted_mask, target_mask))
+  fp_fn = np.sum(np.logical_xor(predicted_mask, target_mask))
+  dice = 2 * tp / (2 * tp + fp_fn)
+  return dice
+
 def get_block_sizes(resnet_size):
   """
   Retrieves the number of block layers to use in the ResNet model, throwing an
