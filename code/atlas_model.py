@@ -7,8 +7,6 @@ import numpy as np
 import tensorflow as tf
 
 import utils
-
-from evaluate import exact_match_score, f1_score
 from data_batcher import SliceBatchGenerator
 
 logging.basicConfig(level=logging.INFO)
@@ -65,9 +63,9 @@ class ATLASModel(object):
 
     # Defines input and target segmentation mask according to the input dims
     self.input_op = tf.placeholder(
-      tf.int32, shape=[self.batch_size_op] + self.input_dims)
+      tf.float32, shape=[None] + self.input_dims, name="input")
     self.target_mask_op = tf.placeholder(
-      tf.int32, shape=[self.batch_size_op] + self.input_dims)
+      tf.float32, shape=[None] + self.input_dims, name="target_mask")
 
     # Adds a placeholder to feed in the keep probability (for dropout).
     self.keep_prob = tf.placeholder_with_default(1.0, shape=())
@@ -100,7 +98,9 @@ class ATLASModel(object):
     #                  version=2,  # resnet_model.DEFAULT_VERSION
     #                  data_format=None,
     #                  dtype=tf.float32)  # resnet_model.DEFAULT_DTYPE
-    self.logits_op = tf.zeros_like(self.input_op)
+    A = tf.get_variable(name="A", shape=())
+    self.logits_op = tf.ones(shape=[self.FLAGS.batch_size] + self.input_dims,
+                             dtype=tf.float32) * A
     self.predicted_mask_probs_op = tf.sigmoid(self.logits_op)
 
 
@@ -240,7 +240,7 @@ class ATLASModel(object):
     loss_per_batch, batch_sizes = [], []
 
     sbg = SliceBatchGenerator(dev_input_paths,
-                              dev_target_mask_paths
+                              dev_target_mask_paths,
                               self.FLAGS.batch_size)
     # Iterates over dev set batches
     for batch in sbg.get_batch():
@@ -260,7 +260,7 @@ class ATLASModel(object):
 
 
   def calculate_dice_coefficient(self,
-                                 sess
+                                 sess,
                                  input_paths,
                                  target_mask_paths,
                                  dataset,
@@ -291,7 +291,7 @@ class ATLASModel(object):
     num_examples = 0
 
     sbg = SliceBatchGenerator(input_paths,
-                              target_mask_paths
+                              target_mask_paths,
                               self.FLAGS.batch_size)
     for batch in sbg.get_batch():
       predicted_masks = self.get_predicted_masks(sess, batch)
@@ -347,15 +347,15 @@ class ATLASModel(object):
     best_dev_dice_coefficient = None
 
     # for TensorBoard
-    summary_writer = tf.summary.FileWriter(self.FLAGS.train_dir, session.graph)
+    summary_writer = tf.summary.FileWriter(self.FLAGS.train_dir, sess.graph)
 
     epoch = 0
-    while self.FLAGS.num_epochs == 0 or epoch < self.FLAGS.num_epochs:
+    while self.FLAGS.num_epochs == None or epoch < self.FLAGS.num_epochs:
       epoch += 1
 
       # Loops over batches
       sbg = SliceBatchGenerator(train_input_paths,
-                                train_target_mask_paths
+                                train_target_mask_paths,
                                 self.FLAGS.batch_size)
       for batch in sbg.get_batch():
         # Runs training iteration

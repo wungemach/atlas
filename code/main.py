@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import sys
@@ -88,6 +89,32 @@ FLAGS = tf.app.flags.FLAGS
 os.environ["CUDA_VISIBLE_DEVICES"] = str(FLAGS.gpu)
 
 
+def initialize_model(sess, model, train_dir, expect_exists):
+    """
+    Initializes model from train_dir.
+
+    Inputs:
+    - sess: A TensorFlow Session object.
+    - model: An ATLASModel object.
+    - train_dir: A Python str that represents the train dir.
+    - expect_exists: If True, throw an error if no checkpoint is found;
+      otherwise, initialize fresh model if no checkpoint is found.
+    """
+    ckpt = tf.train.get_checkpoint_state(train_dir)
+    v2_path = ckpt.model_checkpoint_path + ".index" if ckpt else ""
+    if (ckpt and (tf.gfile.Exists(ckpt.model_checkpoint_path)
+        or tf.gfile.Exists(v2_path))):
+      print(f"Reading model parameters from {ckpt.model_checkpoint_path}")
+      model.saver.restore(sess, ckpt.model_checkpoint_path)
+    else:
+      if expect_exists:
+        raise Exception(f"There is no saved checkpoint at {train_dir}")
+      else:
+        print(f"There is no saved checkpoint at {train_dir}. Creating model "
+              f"with fresh parameters.")
+        sess.run(tf.global_variables_initializer())
+
+
 def main(_):
   #############################################################################
   # Configuration                                                             #
@@ -123,13 +150,10 @@ def main(_):
     file_handler = logging.FileHandler(os.path.join(FLAGS.train_dir, "log.txt"))
     logging.getLogger().addHandler(file_handler)
 
-    # Save a record of flags as a .json file in train_dir
-    with open(os.path.join(FLAGS.train_dir, "flags.json"), 'w') as fout:
-      json.dump(FLAGS.__flags, fout)
-
-    # Make bestmodel dir if necessary
-    if not os.path.exists(bestmodel_dir):
-      os.makedirs(bestmodel_dir)
+    # # Save a record of flags as a .json file in train_dir
+    # with open(os.path.join(FLAGS.train_dir, "flags.json"), "w") as fout:
+    #   import pdb; pdb.set_trace()
+    #   json.dump(FLAGS.__flags, fout)
 
     with tf.Session(config=config) as sess:
       # Loads most recent model
