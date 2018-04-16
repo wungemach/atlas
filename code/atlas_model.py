@@ -178,11 +178,12 @@ class ATLASModel(object):
     """
     input_feed = {}
     input_feed[self.batch_size_op] = self.FLAGS.batch_size
-    input_feed[self.input_op] = batch.input
-    input_feed[self.target_mask_op] = batch.target_mask
+    input_feed[self.input_op] = batch.inputs_batch
+    input_feed[self.target_mask_op] = batch.target_masks_batch
     # keep_prob not input, so it will default to 1 i.e. no dropout
 
     output_feed = { "loss": self.loss }
+
     results = sess.run(output_feed, input_feed)
 
     return results["loss"]
@@ -203,7 +204,7 @@ class ATLASModel(object):
     """
     input_feed = {}
     input_feed[self.batch_size_op] = self.FLAGS.batch_size
-    input_feed[self.input_op] = batch.input
+    input_feed[self.input_op] = batch.inputs_batch
     # keep_prob not input, so it will default to 1 i.e. no dropout
 
     output_feed = { "predicted_mask_probs": self.predicted_mask_probs_op }

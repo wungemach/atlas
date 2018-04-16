@@ -30,7 +30,7 @@ class SliceBatchGenerator(object):
                input_paths,
                target_mask_paths,
                batch_size,
-               max_num_batches=240,
+               max_num_batches=1000,
                shuffle=False):
     """
     Inputs:
