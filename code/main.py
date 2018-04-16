@@ -45,7 +45,7 @@ tf.app.flags.DEFINE_integer("p", None,
                            "to floor(0.3 * n) where n represents the number "
                            "groups implied by {split_type}; e.g. n=220 for "
                            "by_patient, n=229 for by_scan, n=9 for by_site.")
-tf.app.flags.DEFINE_string("split_type", "by_patient",
+tf.app.flags.DEFINE_string("split_type", "by_slice",
                            "Sets the type of split between the train and dev "
                            "sets. Options: "
                            "{by_patient,by_scan,by_slice,by_site}")
@@ -121,8 +121,8 @@ def main(_):
   #############################################################################
   # Check for Python 3.6
   if sys.version_info[0] != 3:
-    raise Exception("ERROR: You must use Python 3.6 but you are running "
-                    "Python {sys.version_info[0]}")
+    raise Exception(f"ERROR: You must use Python 3.6 but you are running "
+                    f"Python {sys.version_info[0]}")
 
   # Print out Tensorflow version
   print(f"This code was developed and tested on TensorFlow 1.7.0. "
@@ -130,8 +130,8 @@ def main(_):
 
   if not FLAGS.experiment_name:
     raise Exception("You need to specify an --experiment_name or --train_dir.")
-  FLAGS.train_dir = (
-    FLAGS.train_dir or os.path.join(EXPERIMENTS_DIR, FLAGS.experiment_name))
+  FLAGS.train_dir = (FLAGS.train_dir
+                     or os.path.join(EXPERIMENTS_DIR, FLAGS.experiment_name))
 
   # Sets GPU settings
   config = tf.ConfigProto()
@@ -150,10 +150,10 @@ def main(_):
     file_handler = logging.FileHandler(os.path.join(FLAGS.train_dir, "log.txt"))
     logging.getLogger().addHandler(file_handler)
 
-    # # Save a record of flags as a .json file in train_dir
-    # with open(os.path.join(FLAGS.train_dir, "flags.json"), "w") as fout:
-    #   import pdb; pdb.set_trace()
-    #   json.dump(FLAGS.__flags, fout)
+    # Save a record of flags as a .json file in train_dir
+    with open(os.path.join(FLAGS.train_dir, "flags.json"), "w") as fout:
+      flags = {k: v.serialize() for k, v in FLAGS.__flags.items()}
+      json.dump(flags, fout)
 
     with tf.Session(config=config) as sess:
       # Loads most recent model

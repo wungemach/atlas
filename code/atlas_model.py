@@ -22,12 +22,14 @@ class ATLASModel(object):
     """
     self.FLAGS = FLAGS
 
-    with tf.variable_scope("ATLASModel", initializer=tf.contrib.layers.variance_scaling_initializer(factor=1.0, uniform=True)):
+    var_init = tf.contrib.layers.variance_scaling_initializer
+    with tf.variable_scope("ATLASModel",
+                           initializer=var_init(factor=1.0, uniform=True)):
       self.add_placeholders()
       self.build_graph()
       self.add_loss()
 
-    # Define trainable parameters, gradient, gradient norm, and clip by
+    # Defines the trainable parameters, gradient, gradient norm, and clip by
     # gradient norm
     params = tf.trainable_variables()
     gradients = tf.gradients(self.loss, params)
@@ -36,14 +38,14 @@ class ATLASModel(object):
                                                   FLAGS.max_gradient_norm)
     self.param_norm = tf.global_norm(params)
 
-    # Define optimizer and updates
-    # (updates is what you need to fetch in session.run to do a gradient update)
+    # Defines optimizer and updates; {self.updates} needs to be fetched in
+    # sess.run to do a gradient update
     self.global_step = tf.Variable(0, name="global_step", trainable=False)
     opt = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate)
     self.updates = opt.apply_gradients(zip(clipped_gradients, params),
                                        global_step=self.global_step)
 
-    # Define savers (for checkpointing) and summaries (for tensorboard)
+    # Defines savers (for checkpointing) and summaries (for tensorboard)
     self.saver = tf.train.Saver(tf.global_variables(), max_to_keep=FLAGS.keep)
     self.summaries = tf.summary.merge_all()
 
@@ -52,22 +54,24 @@ class ATLASModel(object):
     """
     Adds placeholders to the graph.
     """
-    # Add placeholders for inputs.
+    # Adds placeholders for inputs
     self.batch_size_op = tf.placeholder(tf.int32, shape=(), name="batch_size")
 
     # Defines the input dimensions, which depend on the intended input; here
     # the intended input is a single slice but volumetric inputs might require
-    # 1+ additional dimensions.
-    self.input_dims = [self.FLAGS.image_height, self.FLAGS.image_width]
+    # 1+ additional dimensions
+    self.input_dims = [self.FLAGS.image_height, self.FLAGS.image_width, 3]
     self.output_dims = self.input_dims
 
     # Defines input and target segmentation mask according to the input dims
-    self.input_op = tf.placeholder(
-      tf.float32, shape=[None] + self.input_dims, name="input")
-    self.target_mask_op = tf.placeholder(
-      tf.float32, shape=[None] + self.input_dims, name="target_mask")
+    self.input_op = tf.placeholder(tf.float32,
+                                   shape=[None] + self.input_dims,
+                                   name="input")
+    self.target_mask_op = tf.placeholder(tf.float32,
+                                         shape=[None] + self.input_dims,
+                                         name="target_mask")
 
-    # Adds a placeholder to feed in the keep probability (for dropout).
+    # Adds a placeholder to feed in the keep probability (for dropout)
     self.keep_prob = tf.placeholder_with_default(1.0, shape=())
 
 
@@ -112,9 +116,9 @@ class ATLASModel(object):
     - self.loss: A scalar Tensor.
     """
     with tf.variable_scope("loss"):
-      loss = tf.nn.sigmoid_cross_entropy_with_logits(
-        logits=self.logits_op,
-        labels=self.target_mask_op)
+      sigmoid_ce_with_logits = tf.nn.sigmoid_cross_entropy_with_logits
+      loss = sigmoid_ce_with_logits(logits=self.logits_op,
+                                    labels=self.target_mask_op)
       self.loss = tf.reduce_mean(loss)  # scalar mean across batch
       tf.summary.scalar("loss", self.loss)  # logs to TensorBoard
 
@@ -135,27 +139,27 @@ class ATLASModel(object):
     - param_norm: Global norm of the parameters
     - gradient_norm: Global norm of the gradients
     """
-    # Match up our input data with the placeholders
+    # Fills the placeholders
     input_feed = {}
     input_feed[self.batch_size_op] = self.FLAGS.batch_size
-    input_feed[self.input_op] = batch.input
-    input_feed[self.target_mask_op] = batch.target_mask
+    input_feed[self.input_op] = batch.inputs_batch
+    input_feed[self.target_mask_op] = batch.target_masks_batch
     input_feed[self.keep_prob] = 1.0 - self.FLAGS.dropout  # applies dropout
 
-    # output_feed contains the things we want to fetch.
+    # Specifies ops to be fetched
     output_feed = {
       "updates": self.updates,
       "summaries": self.summaries,
       "loss": self.loss,
       "global_step": self.global_step,
       "param_norm": self.param_norm,
-      "grad_norm": self.gradient_norm
+      "grad_norm": self.gradient_norm,
     }
 
-    # Run the model
+    # Runs the model
     results = sess.run(output_feed, input_feed)
 
-    # All summaries in the graph are added to Tensorboard
+    # Adds all summaries in the graph to Tensorboard
     summary_writer.add_summary(results["summaries"], results["global_step"])
 
     return results["loss"], results["global_step"], results["param_norm"], results["grad_norm"]
@@ -179,7 +183,6 @@ class ATLASModel(object):
     # keep_prob not input, so it will default to 1 i.e. no dropout
 
     output_feed = { "loss": self.loss }
-
     results = sess.run(output_feed, input_feed)
 
     return results["loss"]
@@ -372,7 +375,7 @@ class ATLASModel(object):
         if global_step % self.FLAGS.print_every == 0:
           logging.info(
             f"epoch {epoch}, "
-            f"global_step {global_step']}, "
+            f"global_step {global_step}, "
             f"loss {loss}, "
             f"exp_loss {exp_loss}, "
             f"grad norm {grad_norm}, "

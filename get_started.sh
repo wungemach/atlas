@@ -56,3 +56,5 @@ export -f unpack_niigz
 
 # Runs unpack_niigz for every file that matches *.nii.gz in $DATA_DIR
 find $DATA_DIR -name "*.nii.gz" -type f -exec bash -c 'unpack_niigz {}' \;
+
+# find . -type f -wholename "*Site*/*/*/*_t1w_deface_stx/*.jpg" | wc -l
