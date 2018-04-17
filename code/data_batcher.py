@@ -78,8 +78,8 @@ class SliceBatchGenerator(object):
 
     for input_path, target_mask_path in zipped_paths:
       examples.append((
-        np.asarray(Image.open(input_path).convert("L").resize(232, 196)),
-        np.asarray(Image.open(target_mask_path).convert("L").resize(232, 196))
+        np.asarray(Image.open(input_path).convert("L").resize((232, 196), Image.NEAREST)),
+        np.asarray(Image.open(target_mask_path).convert("L").resize((232, 196), Image.NEAREST))
       ))
       if len(examples) >= self._batch_size * self._max_num_batches:
         break
