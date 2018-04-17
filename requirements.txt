@@ -1,3 +1,4 @@
 dicom
 med2image
 tensorflow==1.7
+tqdm

@@ -7,8 +7,6 @@ import tensorflow as tf
 from atlas_model import ATLASModel
 from split import setup_train_dev_split
 
-logging.basicConfig(level=logging.INFO)
-
 # Relative path of the main directory
 MAIN_DIR = os.path.relpath(
   os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -91,7 +89,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = str(FLAGS.gpu)
 
 def initialize_model(sess, model, train_dir, expect_exists):
     """
-    Initializes model from train_dir.
+    Initializes model from {train_dir}.
 
     Inputs:
     - sess: A TensorFlow Session object.
@@ -119,12 +117,12 @@ def main(_):
   #############################################################################
   # Configuration                                                             #
   #############################################################################
-  # Check for Python 3.6
+  # Checks for Python 3.6
   if sys.version_info[0] != 3:
     raise Exception(f"ERROR: You must use Python 3.6 but you are running "
                     f"Python {sys.version_info[0]}")
 
-  # Print out Tensorflow version
+  # Prints Tensorflow version
   print(f"This code was developed and tested on TensorFlow 1.7.0. "
         f"Your TensorFlow version: {tf.__version__}.")
 
@@ -137,6 +135,10 @@ def main(_):
   config = tf.ConfigProto()
   config.gpu_options.allow_growth = True
 
+  # Sets logging configuration
+  logging.basicConfig(filename=os.path.join(FLAGS.train_dir, "log.txt"),
+                      level=logging.INFO)
+
   #############################################################################
   # Train/dev split and model definition                                      #
   #############################################################################
@@ -147,19 +149,16 @@ def main(_):
     if not os.path.exists(FLAGS.train_dir):
       os.makedirs(FLAGS.train_dir)
 
-    file_handler = logging.FileHandler(os.path.join(FLAGS.train_dir, "log.txt"))
-    logging.getLogger().addHandler(file_handler)
-
-    # Save a record of flags as a .json file in train_dir
+    # Saves a record of flags as a .json file in train_dir
     with open(os.path.join(FLAGS.train_dir, "flags.json"), "w") as fout:
       flags = {k: v.serialize() for k, v in FLAGS.__flags.items()}
       json.dump(flags, fout)
 
     with tf.Session(config=config) as sess:
-      # Loads most recent model
+      # Loads the most recent model
       initialize_model(sess, atlas_model, FLAGS.train_dir, expect_exists=False)
 
-      # Trains model
+      # Trains the model
       atlas_model.train(sess, *setup_train_dev_split(FLAGS))
 
 

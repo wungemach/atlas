@@ -1,15 +1,14 @@
 import logging
+import numpy as np
 import os
 import sys
+import tensorflow as tf
 import time
 
-import numpy as np
-import tensorflow as tf
+from tqdm import tqdm
 
 import utils
 from data_batcher import SliceBatchGenerator
-
-logging.basicConfig(level=logging.INFO)
 
 
 class ATLASModel(object):
@@ -18,7 +17,7 @@ class ATLASModel(object):
     Initializes the ATLAS model.
 
     Inputs:
-    - FLAGS: the flags passed in from main.py
+    - FLAGS: A _FlagValuesWrapper object passed in from main.py.
     """
     self.FLAGS = FLAGS
 
@@ -53,6 +52,16 @@ class ATLASModel(object):
   def add_placeholders(self):
     """
     Adds placeholders to the graph.
+
+    Defines:
+    - self.batch_size_op: A scalar placeholder Tensor that represents the
+      batch size.
+    - self.input_op: A placeholder Tensor with shape batch size by image dims
+      e.g. (100, 233, 197) that represents the batch of inputs.
+    - self.target_mask_op: A placeholder Tensor with shape batch size by mask
+      dims e.g. (100, 233, 197) that represents the batch of target masks.
+    - self.keep_prob: A scalar placeholder Tensor that represents the keep
+      probability for dropout.
     """
     # Adds placeholders for inputs
     self.batch_size_op = tf.placeholder(tf.int32, shape=(), name="batch_size")
@@ -60,7 +69,7 @@ class ATLASModel(object):
     # Defines the input dimensions, which depend on the intended input; here
     # the intended input is a single slice but volumetric inputs might require
     # 1+ additional dimensions
-    self.input_dims = [self.FLAGS.image_height, self.FLAGS.image_width, 3]
+    self.input_dims = [self.FLAGS.image_height, self.FLAGS.image_width]
     self.output_dims = self.input_dims
 
     # Defines input and target segmentation mask according to the input dims
@@ -81,9 +90,10 @@ class ATLASModel(object):
 
     Defines:
     - self.logits_op: A Tensor of the same shape as self.input_op and
-      self.target_mask_op.
+      self.target_mask_op e.g. (100, 233, 197) that represents the unscaled
+      logits.
     - self.predicted_mask_probs_op: A Tensor of the same shape as
-      self.logits_op, passed through a sigmoid layer.
+      self.logits_op e.g. (100, 233, 197), passed through a sigmoid layer.
     """
     # from models.official.resnet.resnet_model import Model as ResNet
     # encoder = ResNet(resnet_size=self.FLAGS.resnet_size,
@@ -113,7 +123,11 @@ class ATLASModel(object):
     Adds loss computation to the graph.
 
     Defines:
-    - self.loss: A scalar Tensor.
+    - self.loss: A scalar Tensor that represents the loss; applies sigmoid
+      cross entropy to {self.logits_op}; {self.logits_op} contains unscaled
+      logits e.g. [-4.4, 1.3, -1.6, 3.5, 2.3, ...]. This particular set of
+      logits incurs a high loss for {self.target_mask_op} [1, 0, 1, 0, ...]
+      and low loss for [0, 1, 0, 1, 1].
     """
     with tf.variable_scope("loss"):
       sigmoid_ce_with_logits = tf.nn.sigmoid_cross_entropy_with_logits
@@ -135,9 +149,9 @@ class ATLASModel(object):
 
     Outputs:
     - loss: The loss (averaged across the batch) for this batch.
-    - global_step: The current number of training iterations we've done
-    - param_norm: Global norm of the parameters
-    - gradient_norm: Global norm of the gradients
+    - global_step: The current number of training iterations we've done.
+    - param_norm: Global norm of the parameters.
+    - gradient_norm: Global norm of the gradients.
     """
     # Fills the placeholders
     input_feed = {}
@@ -167,7 +181,7 @@ class ATLASModel(object):
 
   def get_loss(self, sess, batch):
     """
-    Runs forward-pass only; get loss.
+    Runs forward-pass only; gets loss.
 
     Inputs:
     - sess: A TensorFlow Session object.
@@ -191,8 +205,8 @@ class ATLASModel(object):
 
   def get_predicted_mask_probs(self, sess, batch):
     """
-    Run forward-pass only; get probability distributions for the predicted
-    masks.
+    Runs forward-pass only; gets probability distributions for the predicted
+    masks i.e. sigmoid({self.logits_op}).
 
     Inputs:
     - sess: A TensorFlow Session object.
@@ -214,8 +228,7 @@ class ATLASModel(object):
 
   def get_predicted_masks(self, sess, batch):
     """
-    Run forward-pass only; get probability distributions for the predicted
-    masks.
+    Runs forward-pass only; gets the predicted masks.
 
     Inputs:
     - sess: A TensorFlow Session object.
@@ -236,6 +249,10 @@ class ATLASModel(object):
 
     Inputs:
     - sess: A TensorFlow Session object.
+    - dev_input_paths: A list of Python strs that represent pathnames to input
+      image files in the dev set.
+    - dev_target_mask_paths: A list of Python strs that represent pathnames to
+      input target mask files in the dev set.
 
     Outputs:
     - dev_loss: A Python float that represents the average loss across the dev
@@ -354,14 +371,19 @@ class ATLASModel(object):
     summary_writer = tf.summary.FileWriter(self.FLAGS.train_dir, sess.graph)
 
     epoch = 0
-    while self.FLAGS.num_epochs == None or epoch < self.FLAGS.num_epochs:
+    num_epochs = self.FLAGS.num_epochs
+    while num_epochs == None or epoch < num_epochs:
       epoch += 1
 
       # Loops over batches
       sbg = SliceBatchGenerator(train_input_paths,
                                 train_target_mask_paths,
                                 self.FLAGS.batch_size)
-      for batch in sbg.get_batch():
+      num_epochs_str = str(num_epochs) if num_epochs != None else "indefinite"
+      for batch in tqdm(sbg.get_batch(),
+                        desc=f"Epoch {epoch}/{num_epochs_str}",
+                        total=sbg.get_num_batches()):
+      # for batch in sbg.get_batch():
         # Runs training iteration
         loss, global_step, param_norm, grad_norm =\
           self.run_train_iter(sess, batch, summary_writer)
@@ -415,12 +437,12 @@ class ATLASModel(object):
             f"dev dice_coefficient: {dev_dice}")
           write_summary(dev_dice, "dev/dice", summary_writer, global_step)
       # end for batch in sbg.get_batch
-    # end while self.FLAGS.num_epochs == 0 or epoch < self.FLAGS.num_epochs
+    # end while num_epochs == 0 or epoch < num_epochs
     sys.stdout.flush()
 
 
 def write_summary(value, tag, summary_writer, global_step):
-  """Writes a single summary value to tensorboard"""
+  """Writes a single summary value to TensorBoard."""
   summary = tf.Summary()
   summary.value.add(tag=tag, simple_value=value)
   summary_writer.add_summary(summary, global_step)
