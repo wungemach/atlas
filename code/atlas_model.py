@@ -9,6 +9,7 @@ from tqdm import tqdm
 
 import utils
 from data_batcher import SliceBatchGenerator
+from modules import ConvEncoder, DeconvDecoder
 
 
 class ATLASModel(object):
@@ -56,9 +57,9 @@ class ATLASModel(object):
     Defines:
     - self.batch_size_op: A scalar placeholder Tensor that represents the
       batch size.
-    - self.input_op: A placeholder Tensor with shape batch size by image dims
+    - self.inputs_op: A placeholder Tensor with shape batch size by image dims
       e.g. (100, 233, 197) that represents the batch of inputs.
-    - self.target_mask_op: A placeholder Tensor with shape batch size by mask
+    - self.target_masks_op: A placeholder Tensor with shape batch size by mask
       dims e.g. (100, 233, 197) that represents the batch of target masks.
     - self.keep_prob: A scalar placeholder Tensor that represents the keep
       probability for dropout.
@@ -73,12 +74,12 @@ class ATLASModel(object):
     self.output_dims = self.input_dims
 
     # Defines input and target segmentation mask according to the input dims
-    self.input_op = tf.placeholder(tf.float32,
-                                   shape=[None] + self.input_dims,
-                                   name="input")
-    self.target_mask_op = tf.placeholder(tf.float32,
-                                         shape=[None] + self.input_dims,
-                                         name="target_mask")
+    self.inputs_op = tf.placeholder(tf.float32,
+                                    shape=[None] + self.input_dims,
+                                    name="input")
+    self.target_masks_op = tf.placeholder(tf.float32,
+                                          shape=[None] + self.input_dims,
+                                          name="target_mask")
 
     # Adds a placeholder to feed in the keep probability (for dropout)
     self.keep_prob = tf.placeholder_with_default(1.0, shape=())
@@ -89,8 +90,8 @@ class ATLASModel(object):
     Builds the main part of the graph for the model.
 
     Defines:
-    - self.logits_op: A Tensor of the same shape as self.input_op and
-      self.target_mask_op e.g. (100, 233, 197) that represents the unscaled
+    - self.logits_op: A Tensor of the same shape as self.inputs_op and
+      self.target_masks_op e.g. (100, 233, 197) that represents the unscaled
       logits.
     - self.predicted_mask_probs_op: A Tensor of the same shape as
       self.logits_op e.g. (100, 233, 197), passed through a sigmoid layer.
@@ -112,10 +113,22 @@ class ATLASModel(object):
     #                  version=2,  # resnet_model.DEFAULT_VERSION
     #                  data_format=None,
     #                  dtype=tf.float32)  # resnet_model.DEFAULT_DTYPE
-    A = tf.get_variable(name="A", shape=())
-    self.logits_op = tf.ones(shape=[self.FLAGS.batch_size] + self.input_dims,
-                             dtype=tf.float32) * A
+
+    # self.input_dims == self.inputs_op.get_shape().as_list()[1:]
+    encoder = ConvEncoder(input_shape=self.input_dims,
+                          keep_prob=self.keep_prob,
+                          scope_name="encoder")
+    encoder_hiddens_op = encoder.build_graph(tf.expand_dims(self.inputs_op, 3))
+    decoder = DeconvDecoder(keep_prob=self.keep_prob,
+                            output_shape=self.input_dims,
+                            scope_name="decoder")
+    self.logits_op = tf.squeeze(decoder.build_graph(encoder_hiddens_op))
     self.predicted_mask_probs_op = tf.sigmoid(self.logits_op)
+
+    # A = tf.get_variable(name="A", shape=(), initializer=tf.constant_initializer(-10))
+    # self.logits_op = tf.ones(shape=[self.FLAGS.batch_size] + self.input_dims,
+    #                          dtype=tf.float32) * A
+    # self.predicted_mask_probs_op = tf.sigmoid(self.logits_op)
 
 
   def add_loss(self):
@@ -126,13 +139,13 @@ class ATLASModel(object):
     - self.loss: A scalar Tensor that represents the loss; applies sigmoid
       cross entropy to {self.logits_op}; {self.logits_op} contains unscaled
       logits e.g. [-4.4, 1.3, -1.6, 3.5, 2.3, ...]. This particular set of
-      logits incurs a high loss for {self.target_mask_op} [1, 0, 1, 0, ...]
+      logits incurs a high loss for {self.target_masks_op} [1, 0, 1, 0, ...]
       and low loss for [0, 1, 0, 1, 1].
     """
     with tf.variable_scope("loss"):
       sigmoid_ce_with_logits = tf.nn.sigmoid_cross_entropy_with_logits
       loss = sigmoid_ce_with_logits(logits=self.logits_op,
-                                    labels=self.target_mask_op)
+                                    labels=self.target_masks_op)
       self.loss = tf.reduce_mean(loss)  # scalar mean across batch
       tf.summary.scalar("loss", self.loss)  # logs to TensorBoard
 
@@ -156,8 +169,8 @@ class ATLASModel(object):
     # Fills the placeholders
     input_feed = {}
     input_feed[self.batch_size_op] = self.FLAGS.batch_size
-    input_feed[self.input_op] = batch.inputs_batch
-    input_feed[self.target_mask_op] = batch.target_masks_batch
+    input_feed[self.inputs_op] = batch.inputs_batch
+    input_feed[self.target_masks_op] = batch.target_masks_batch
     input_feed[self.keep_prob] = 1.0 - self.FLAGS.dropout  # applies dropout
 
     # Specifies ops to be fetched
@@ -192,8 +205,8 @@ class ATLASModel(object):
     """
     input_feed = {}
     input_feed[self.batch_size_op] = self.FLAGS.batch_size
-    input_feed[self.input_op] = batch.inputs_batch
-    input_feed[self.target_mask_op] = batch.target_masks_batch
+    input_feed[self.inputs_op] = batch.inputs_batch
+    input_feed[self.target_masks_op] = batch.target_masks_batch
     # keep_prob not input, so it will default to 1 i.e. no dropout
 
     output_feed = { "loss": self.loss }
@@ -218,7 +231,7 @@ class ATLASModel(object):
     """
     input_feed = {}
     input_feed[self.batch_size_op] = self.FLAGS.batch_size
-    input_feed[self.input_op] = batch.inputs_batch
+    input_feed[self.inputs_op] = batch.inputs_batch
     # keep_prob not input, so it will default to 1 i.e. no dropout
 
     output_feed = { "predicted_mask_probs": self.predicted_mask_probs_op }

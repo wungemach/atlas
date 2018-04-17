@@ -68,8 +68,8 @@ tf.app.flags.DEFINE_string("data_dir", DEFAULT_DATA_DIR,
                            "Defaults to data/.")
 
 # Model
-tf.app.flags.DEFINE_integer("image_height", 233, "Sets the image height.")
-tf.app.flags.DEFINE_integer("image_width", 197, "Sets the image width.")
+tf.app.flags.DEFINE_integer("image_height", 232, "Sets the image height.")
+tf.app.flags.DEFINE_integer("image_width", 196, "Sets the image width.")
 
 # ResNet
 tf.app.flags.DEFINE_integer("resnet_size", 34, "Sets the ResNet size.")
