@@ -70,7 +70,7 @@ class ATLASModel(object):
     # Defines the input dimensions, which depend on the intended input; here
     # the intended input is a single slice but volumetric inputs might require
     # 1+ additional dimensions
-    self.input_dims = [self.FLAGS.image_height, self.FLAGS.image_width]
+    self.input_dims = [self.FLAGS.slice_height, self.FLAGS.slice_width]
     self.output_dims = self.input_dims
 
     # Defines input and target segmentation mask according to the input dims
@@ -94,7 +94,7 @@ class ATLASModel(object):
       self.target_masks_op e.g. (100, 233, 197) that represents the unscaled
       logits.
     - self.predicted_mask_probs_op: A Tensor of the same shape as
-      self.logits_op e.g. (100, 233, 197), passed through a sigmoid layer.
+      self.logits_op e.g. (100, 233, 197), and passed through a sigmoid layer.
     """
     # from models.official.resnet.resnet_model import Model as ResNet
     # encoder = ResNet(resnet_size=self.FLAGS.resnet_size,
@@ -114,7 +114,7 @@ class ATLASModel(object):
     #                  data_format=None,
     #                  dtype=tf.float32)  # resnet_model.DEFAULT_DTYPE
 
-    # self.input_dims == self.inputs_op.get_shape().as_list()[1:]
+    # assert self.input_dims == self.inputs_op.get_shape().as_list()[1:]
     encoder = ConvEncoder(input_shape=self.input_dims,
                           keep_prob=self.keep_prob,
                           scope_name="encoder")
@@ -124,11 +124,6 @@ class ATLASModel(object):
                             scope_name="decoder")
     self.logits_op = tf.squeeze(decoder.build_graph(encoder_hiddens_op))
     self.predicted_mask_probs_op = tf.sigmoid(self.logits_op)
-
-    # A = tf.get_variable(name="A", shape=(), initializer=tf.constant_initializer(-10))
-    # self.logits_op = tf.ones(shape=[self.FLAGS.batch_size] + self.input_dims,
-    #                          dtype=tf.float32) * A
-    # self.predicted_mask_probs_op = tf.sigmoid(self.logits_op)
 
 
   def add_loss(self):
@@ -144,6 +139,7 @@ class ATLASModel(object):
     """
     with tf.variable_scope("loss"):
       sigmoid_ce_with_logits = tf.nn.sigmoid_cross_entropy_with_logits
+      # {loss} is the same shape as {self.logits_op} and {self.target_masks_op}
       loss = sigmoid_ce_with_logits(logits=self.logits_op,
                                     labels=self.target_masks_op)
       self.loss = tf.reduce_mean(loss)  # scalar mean across batch
@@ -173,6 +169,16 @@ class ATLASModel(object):
     input_feed[self.target_masks_op] = batch.target_masks_batch
     input_feed[self.keep_prob] = 1.0 - self.FLAGS.dropout  # applies dropout
 
+    # To debug, it's often helpful to inspect variables or outputs of layers
+    #   of the network. To do so, simply add tensors to {output_feed} and
+    #   corresponding Python values will populate {results} e.g. suppose you
+    #   wanted to inspect the output of the encoder of ATLASModel. Adding:
+    #
+    # "encoder_out": tf.get_default_graph().get_tensor_by_name("ATLASModel/encoder/out:0"),
+    #
+    # to {output_feed} causes {results["encoder_out"]} to contain numpy arrays
+    # of embedding values.
+
     # Specifies ops to be fetched
     output_feed = {
       "updates": self.updates,
@@ -180,7 +186,7 @@ class ATLASModel(object):
       "loss": self.loss,
       "global_step": self.global_step,
       "param_norm": self.param_norm,
-      "grad_norm": self.gradient_norm,
+      "grad_norm": self.gradient_norm
     }
 
     # Runs the model
@@ -189,12 +195,17 @@ class ATLASModel(object):
     # Adds all summaries in the graph to Tensorboard
     summary_writer.add_summary(results["summaries"], results["global_step"])
 
-    return results["loss"], results["global_step"], results["param_norm"], results["grad_norm"]
+    return (
+      results["loss"],
+      results["global_step"],
+      results["param_norm"],
+      results["grad_norm"]
+    )
 
 
   def get_loss(self, sess, batch):
     """
-    Runs forward-pass only; gets loss.
+    Runs a forward-pass only; gets the loss.
 
     Inputs:
     - sess: A TensorFlow Session object.
@@ -218,8 +229,8 @@ class ATLASModel(object):
 
   def get_predicted_mask_probs(self, sess, batch):
     """
-    Runs forward-pass only; gets probability distributions for the predicted
-    masks i.e. sigmoid({self.logits_op}).
+    Runs a forward-pass only; gets the probability distributions for the
+    predicted masks i.e. sigmoid({self.logits_op}).
 
     Inputs:
     - sess: A TensorFlow Session object.
@@ -241,7 +252,7 @@ class ATLASModel(object):
 
   def get_predicted_masks(self, sess, batch):
     """
-    Runs forward-pass only; gets the predicted masks.
+    Runs a forward-pass only; gets the predicted masks.
 
     Inputs:
     - sess: A TensorFlow Session object.
@@ -275,7 +286,10 @@ class ATLASModel(object):
 
     sbg = SliceBatchGenerator(dev_input_paths,
                               dev_target_mask_paths,
-                              self.FLAGS.batch_size)
+                              self.FLAGS.batch_size,
+                              shape=(self.FLAGS.slice_height,
+                                     self.FLAGS.slice_width),
+                              use_fake_target_masks=self.FLAGS.use_fake_target_masks)
     # Iterates over dev set batches
     for batch in sbg.get_batch():
       # Gets loss for this batch
@@ -326,7 +340,10 @@ class ATLASModel(object):
 
     sbg = SliceBatchGenerator(input_paths,
                               target_mask_paths,
-                              self.FLAGS.batch_size)
+                              self.FLAGS.batch_size,
+                              shape=(self.FLAGS.slice_height,
+                                     self.FLAGS.slice_width),
+                              use_fake_target_masks=self.FLAGS.use_fake_target_masks)
     for batch in sbg.get_batch():
       predicted_masks = self.get_predicted_masks(sess, batch)
 
@@ -362,7 +379,7 @@ class ATLASModel(object):
             dev_input_paths,
             dev_target_mask_paths):
     """
-    Defines training loop.
+    Defines the training loop.
 
     Inputs:
     - sess: A TensorFlow Session object.
@@ -391,7 +408,10 @@ class ATLASModel(object):
       # Loops over batches
       sbg = SliceBatchGenerator(train_input_paths,
                                 train_target_mask_paths,
-                                self.FLAGS.batch_size)
+                                self.FLAGS.batch_size,
+                                shape=(self.FLAGS.slice_height,
+                                       self.FLAGS.slice_width),
+                                use_fake_target_masks=self.FLAGS.use_fake_target_masks)
       num_epochs_str = str(num_epochs) if num_epochs != None else "indefinite"
       for batch in tqdm(sbg.get_batch(),
                         desc=f"Epoch {epoch}/{num_epochs_str}",
@@ -426,32 +446,54 @@ class ATLASModel(object):
           # Logs loss for entire dev set to TensorBoard
           dev_loss = self.get_dev_loss(
             sess, dev_input_paths, dev_target_mask_paths)
-          logging.info(
-            f"epoch {epoch}, "
-            f"global_step {global_step}, "
-            f"dev_loss {dev_loss}")
+          logging.info(f"epoch {epoch}, "
+                       f"global_step {global_step}, "
+                       f"dev_loss {dev_loss}")
           write_summary(dev_loss, "dev/loss", summary_writer, global_step)
 
           # Logs dice coefficient on train set to TensorBoard
           train_dice = self.calculate_dice_coefficient(
             sess, train_input_paths, train_target_mask_paths, "train", num_samples=1000)
-          logging.info(
-            f"epoch {epoch}, "
-            f"global_step {global_step}, "
-            f"train dice_coefficient: {train_dice}")
+          logging.info(f"epoch {epoch}, "
+                       f"global_step {global_step}, "
+                       f"train dice_coefficient: {train_dice}")
           write_summary(train_dice, "train/dice", summary_writer, global_step)
 
           # Logs dice coefficient on dev set to TensorBoard
           dev_dice = self.calculate_dice_coefficient(
             sess, dev_input_paths, dev_target_mask_paths, "dev")
-          logging.info(
-            f"epoch {epoch}, "
-            f"global_step {global_step}, "
-            f"dev dice_coefficient: {dev_dice}")
+          logging.info(f"epoch {epoch}, "
+                       f"global_step {global_step}, "
+                       f"dev dice_coefficient: {dev_dice}")
           write_summary(dev_dice, "dev/dice", summary_writer, global_step)
       # end for batch in sbg.get_batch
     # end while num_epochs == 0 or epoch < num_epochs
     sys.stdout.flush()
+
+
+class ZeroATLASModel(ATLASModel):
+  def __init__(self, FLAGS):
+    """
+    Initializes the Zero ATLAS model, which predicts 0 for the entire mask
+    no matter what, which performs well when --use_fake_target_masks.
+
+    Inputs:
+    - FLAGS: A _FlagValuesWrapper object passed in from main.py.
+    """
+    super().__init__(FLAGS)
+
+
+  def build_graph(self):
+    """
+    Sets {self.logits_op} to a matrix entirely of a small constant.
+    """
+    # -18.420680734 produces a sigmoid-ce loss of ~10^-8
+    c = tf.get_variable(initializer=tf.constant_initializer(-18.420680734),
+                        name="c",
+                        shape=())
+    self.logits_op = tf.ones(shape=[self.FLAGS.batch_size] + self.input_dims,
+                             dtype=tf.float32) * c
+    self.predicted_mask_probs_op = tf.sigmoid(self.logits_op)
 
 
 def write_summary(value, tag, summary_writer, global_step):

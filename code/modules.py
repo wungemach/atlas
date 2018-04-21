@@ -20,7 +20,8 @@ class ConvEncoder(object):
       fc1 = self.fc(drop2, output_shape=1024, scope_name="fc1")
       drop3 = self.dropout(fc1, keep_prob=self.keep_prob, scope_name="drop3")
       fc2 = self.fc(drop3, output_shape=256, scope_name="fc2")
-    return fc2
+      out = tf.identity(fc2, name="out")
+    return out
 
   def conv2d(self, input, filter_shape, scope_name, strides=[1, 1, 1, 1]):
     xavier_initializer = tf.contrib.layers.xavier_initializer
@@ -33,20 +34,21 @@ class ConvEncoder(object):
                           shape=[filter_shape[3]])
       out = tf.nn.conv2d(input, W, padding="SAME", strides=strides)
       out = tf.nn.bias_add(out, b)
-      out = tf.nn.relu(out)
+      out = tf.nn.relu(out, name="out")
       return out
 
   def maxpool2d(self, input, scope_name, pool_shape=[1, 2, 2, 1], strides=[1, 2, 2, 1]):
     with tf.variable_scope(scope_name):
       out = tf.nn.max_pool(input,
                            ksize=pool_shape,
-                           strides=strides,
-                           padding="SAME")
+                           name="out",
+                           padding="SAME",
+                           strides=strides)
       return out
 
   def dropout(self, input, keep_prob, scope_name):
     with tf.variable_scope(scope_name):
-      out = tf.nn.dropout(input, keep_prob)
+      out = tf.nn.dropout(input, keep_prob, name="out")
       return out
 
   def fc(self, input, output_shape, scope_name):
@@ -61,7 +63,8 @@ class ConvEncoder(object):
                           shape=[output_shape],
                           initializer=xavier_initializer(uniform=False))
       input = tf.reshape(input, [-1, input_shape])
-      out = tf.nn.relu(tf.add(tf.matmul(input, W), b))
+      # out = tf.nn.relu(tf.add(tf.matmul(input, W), b), name="out")
+      out = tf.add(tf.matmul(input, W), b, name="out")
       return out
 
 
@@ -82,24 +85,27 @@ class DeconvDecoder(ConvEncoder):
       deconv1 = self.deconv2d(up1, filter_shape=[5, 5], num_outputs=8, scope_name="deconv1")  # (116, 98, 8)
       up2 = self.upsample(deconv1, scope_name="up2", factor=[2, 2])
       deconv2 = self.deconv2d(up2, filter_shape=[3, 3], num_outputs=1, scope_name="deconv2")  # (232, 196, 1)
-      return deconv2
+      out = tf.identity(deconv2, name="out")
+    return out
 
   def deconv2d(self, input, filter_shape, num_outputs, scope_name, strides=[1, 1]):
     xavier_initializer = tf.contrib.layers.xavier_initializer
     xavier_initializer_conv2d = tf.contrib.layers.xavier_initializer_conv2d
     with tf.variable_scope(scope_name):
       out = tf.contrib.layers.conv2d_transpose(input,
-                                               activation_fn=tf.nn.relu,
+                                               # activation_fn=tf.nn.relu,
+                                               activation_fn=None,
                                                biases_initializer=xavier_initializer(uniform=False),
                                                kernel_size=filter_shape,
                                                num_outputs=num_outputs,
                                                padding="SAME",
                                                stride=strides,
                                                weights_initializer=xavier_initializer_conv2d(uniform=False))
+      out = tf.identity(out, name="out")
       return out
 
-  def upsample(self, input, scope_name, factor=[2,2]):
+  def upsample(self, input, scope_name, factor=[2, 2]):
     size = [int(input.shape[1] * factor[0]), int(input.shape[2] * factor[1])]
     with tf.variable_scope(scope_name):
-      out = tf.image.resize_bilinear(input, size=size, align_corners=None, name=None)
+      out = tf.image.resize_bilinear(input, size=size, align_corners=None, name="out")
       return out

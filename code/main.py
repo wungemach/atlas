@@ -4,7 +4,6 @@ import os
 import sys
 import tensorflow as tf
 
-from atlas_model import ATLASModel
 from split import setup_train_dev_split
 
 # Relative path of the main directory
@@ -25,19 +24,21 @@ tf.app.flags.DEFINE_string("experiment_name", "",
 tf.app.flags.DEFINE_integer("gpu", 0,
                             "Sets which GPU to use, if you have multiple.")
 tf.app.flags.DEFINE_string("mode", "train",
-                           "Options: {train,show_examples}")
+                           "Options: {train,show_examples}.")
 tf.app.flags.DEFINE_integer("num_epochs", None,
                             "Sets the number of epochs to train. None means "
                             "train indefinitely.")
 tf.app.flags.DEFINE_string("train_dir", "",
                            "Sets the dir to which checkpoints and logs will "
                            "be saved. Defaults to "
-                           "experiments/{experiment_name}")
+                           "experiments/{experiment_name}.")
+tf.app.flags.DEFINE_boolean("use_fake_target_masks", False,
+                            "Sets whether to use fake target masks or not.")
 
 # Split
 tf.app.flags.DEFINE_string("cv_type", "lpocv",
                            "Sets the type of cross validation. Options: "
-                           "{lpocv,loocv}")
+                           "{lpocv,loocv}.")
 tf.app.flags.DEFINE_integer("p", None,
                            "Sets p for leave-p-out cross-validation. Defaults "
                            "to floor(0.3 * n) where n represents the number "
@@ -46,7 +47,7 @@ tf.app.flags.DEFINE_integer("p", None,
 tf.app.flags.DEFINE_string("split_type", "by_slice",
                            "Sets the type of split between the train and dev "
                            "sets. Options: "
-                           "{by_patient,by_scan,by_slice,by_site}")
+                           "{by_patient,by_scan,by_slice,by_site}.")
 
 # Logging
 tf.app.flags.DEFINE_integer("eval_every", 500,
@@ -68,14 +69,18 @@ tf.app.flags.DEFINE_string("data_dir", DEFAULT_DATA_DIR,
                            "Defaults to data/.")
 
 # Model
-tf.app.flags.DEFINE_integer("image_height", 232, "Sets the image height.")
-tf.app.flags.DEFINE_integer("image_width", 196, "Sets the image width.")
+tf.app.flags.DEFINE_string("model_name", "ATLASModel",
+                           "Sets the name of the model to use; the name must "
+                           "correspond to the name of a class defined in "
+                           "atlas_model.py.")
+tf.app.flags.DEFINE_integer("slice_height", 232, "Sets the image height.")
+tf.app.flags.DEFINE_integer("slice_width", 196, "Sets the image width.")
 
 # ResNet
 tf.app.flags.DEFINE_integer("resnet_size", 34, "Sets the ResNet size.")
 
 # Hyperparameters
-tf.app.flags.DEFINE_integer("batch_size", 100, "Sets the batch size")
+tf.app.flags.DEFINE_integer("batch_size", 100, "Sets the batch size.")
 tf.app.flags.DEFINE_float("dropout", 0.15,
                           "Sets the fraction of units randomly dropped on "
                           "non-recurrent connections.")
@@ -87,14 +92,15 @@ FLAGS = tf.app.flags.FLAGS
 os.environ["CUDA_VISIBLE_DEVICES"] = str(FLAGS.gpu)
 
 
-def initialize_model(sess, model, train_dir, expect_exists):
+def initialize_model(sess, model, train_dir, expect_exists=False):
     """
-    Initializes model from {train_dir}.
+    Initializes the model from {train_dir}.
 
     Inputs:
     - sess: A TensorFlow Session object.
     - model: An ATLASModel object.
-    - train_dir: A Python str that represents the train dir.
+    - train_dir: A Python str that represents the relative path to train dir
+      e.g. "../experiments/001".
     - expect_exists: If True, throw an error if no checkpoint is found;
       otherwise, initialize fresh model if no checkpoint is found.
     """
@@ -135,21 +141,23 @@ def main(_):
   config = tf.ConfigProto()
   config.gpu_options.allow_growth = True
 
-  # Sets logging configuration
-  logging.basicConfig(filename=os.path.join(FLAGS.train_dir, "log.txt"),
-                      level=logging.INFO)
-
   #############################################################################
   # Train/dev split and model definition                                      #
   #############################################################################
   # Initializes model
-  atlas_model = ATLASModel(FLAGS)
+  module = __import__("atlas_model")
+  model_class = getattr(module, FLAGS.model_name)
+  atlas_model = model_class(FLAGS)
 
   if FLAGS.mode == "train":
     if not os.path.exists(FLAGS.train_dir):
       os.makedirs(FLAGS.train_dir)
 
-    # Saves a record of flags as a .json file in train_dir
+    # Sets logging configuration
+    logging.basicConfig(filename=os.path.join(FLAGS.train_dir, "log.txt"),
+                        level=logging.INFO)
+
+    # Saves a record of flags as a .json file in {train_dir}
     with open(os.path.join(FLAGS.train_dir, "flags.json"), "w") as fout:
       flags = {k: v.serialize() for k, v in FLAGS.__flags.items()}
       json.dump(flags, fout)
