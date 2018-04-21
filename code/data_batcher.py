@@ -110,7 +110,8 @@ class SliceBatchGenerator(object):
         # Image.resize expects (width, height) order
         examples.append((
           np.asarray(input.resize(self._shape[::-1], Image.NEAREST)),
-          np.asarray(target_mask.resize(self._shape[::-1], Image.NEAREST))
+          # Converts all values >0 to 1s
+          (np.asarray(target_mask.resize(self._shape[::-1], Image.NEAREST)) > 1e-8) + 0.0
         ))
       if len(examples) >= self._batch_size * self._max_num_batches:
         break

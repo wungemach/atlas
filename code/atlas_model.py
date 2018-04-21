@@ -141,7 +141,8 @@ class ATLASModel(object):
       sigmoid_ce_with_logits = tf.nn.sigmoid_cross_entropy_with_logits
       # {loss} is the same shape as {self.logits_op} and {self.target_masks_op}
       loss = sigmoid_ce_with_logits(logits=self.logits_op,
-                                    labels=self.target_masks_op)
+                                    labels=self.target_masks_op,
+                                    name="ce")
       self.loss = tf.reduce_mean(loss)  # scalar mean across batch
       tf.summary.scalar("loss", self.loss)  # logs to TensorBoard
 
