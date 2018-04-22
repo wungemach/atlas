@@ -32,8 +32,6 @@ tf.app.flags.DEFINE_string("train_dir", "",
                            "Sets the dir to which checkpoints and logs will "
                            "be saved. Defaults to "
                            "experiments/{experiment_name}.")
-tf.app.flags.DEFINE_boolean("use_fake_target_masks", False,
-                            "Sets whether to use fake target masks or not.")
 
 # Split
 tf.app.flags.DEFINE_string("cv_type", "lpocv",
@@ -67,6 +65,15 @@ tf.app.flags.DEFINE_integer("keep", None,
 tf.app.flags.DEFINE_string("data_dir", DEFAULT_DATA_DIR,
                            "Sets the dir in which to find data for training. "
                            "Defaults to data/.")
+tf.app.flags.DEFINE_string("input_regex", None,
+                           "Sets the regex to use for input paths. If set, "
+                           "{FLAGS.p} will be ignored and train and dev sets "
+                           "will use this same input regex.")
+tf.app.flags.DEFINE_boolean("merge_target_masks", False,
+                            "Sets whether to merge target masks or not.")
+tf.app.flags.DEFINE_boolean("use_fake_target_masks", False,
+                            "Sets whether to use fake target masks or not.")
+
 
 # Model
 tf.app.flags.DEFINE_string("model_name", "ATLASModel",

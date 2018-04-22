@@ -122,7 +122,8 @@ class ATLASModel(object):
     decoder = DeconvDecoder(keep_prob=self.keep_prob,
                             output_shape=self.input_dims,
                             scope_name="decoder")
-    self.logits_op = tf.squeeze(decoder.build_graph(encoder_hiddens_op))
+    # Only squeezes the last dimension (do not squeeze the batch dimension)
+    self.logits_op = tf.squeeze(decoder.build_graph(encoder_hiddens_op), axis=3)
     self.predicted_mask_probs_op = tf.sigmoid(self.logits_op)
 
 
@@ -283,6 +284,9 @@ class ATLASModel(object):
     - dev_loss: A Python float that represents the average loss across the dev
       set.
     """
+    logging.info("Calculating dev loss...")
+    tic = time.time()
+
     loss_per_batch, batch_sizes = [], []
 
     sbg = SliceBatchGenerator(dev_input_paths,
@@ -305,6 +309,8 @@ class ATLASModel(object):
     # Overall loss is total loss divided by total number of examples
     dev_loss = sum(loss_per_batch) / float(total_num_examples)
 
+    toc = time.time()
+    logging.info(f"Calculating dev loss took {toc-tic} sec.")
     return dev_loss
 
 
@@ -314,6 +320,7 @@ class ATLASModel(object):
                                  target_mask_paths,
                                  dataset,
                                  num_samples=100,
+                                 plot=False,
                                  print_to_screen=False):
     """
     Samples from the provided dataset and, for each sample, calculates the
@@ -336,6 +343,10 @@ class ATLASModel(object):
     - dice_coefficient: A Python float that represents the average dice
       coefficient across the sampled examples.
     """
+    logging.info(f"Calculating dice coefficient for {num_samples} examples "
+                 f"from {dataset}...")
+    tic = time.time()
+
     dice_coefficient_total = 0.
     num_examples = 0
 
@@ -348,11 +359,7 @@ class ATLASModel(object):
     for batch in sbg.get_batch():
       predicted_masks = self.get_predicted_masks(sess, batch)
 
-      # Convert the start and end positions to lists length batch_size
-      pred_start_pos = pred_start_pos.tolist() # list length batch_size
-      pred_end_pos = pred_end_pos.tolist() # list length batch_size
-
-      zipped_masks = zip(predicted_masks, batch.target_masks)
+      zipped_masks = zip(predicted_masks, batch.target_masks_batch)
       for idx, (predicted_mask, target_mask) in enumerate(zipped_masks):
         num_examples += 1
 
@@ -361,7 +368,7 @@ class ATLASModel(object):
 
         # Optionally plot
         if plot:
-          pass  # TODO: later
+          pass  # TODO
 
         if num_samples != None and num_examples >= num_samples:
           break
@@ -370,6 +377,9 @@ class ATLASModel(object):
         break
 
     dice_coefficient_mean = dice_coefficient_total / num_examples
+
+    toc = time.time()
+    logging.info(f"Calculating dice coefficient took {toc-tic} sec.")
     return dice_coefficient_mean
 
 
@@ -417,7 +427,6 @@ class ATLASModel(object):
       for batch in tqdm(sbg.get_batch(),
                         desc=f"Epoch {epoch}/{num_epochs_str}",
                         total=sbg.get_num_batches()):
-      # for batch in sbg.get_batch():
         # Runs training iteration
         loss, global_step, param_norm, grad_norm =\
           self.run_train_iter(sess, batch, summary_writer)
@@ -454,7 +463,7 @@ class ATLASModel(object):
 
           # Logs dice coefficient on train set to TensorBoard
           train_dice = self.calculate_dice_coefficient(
-            sess, train_input_paths, train_target_mask_paths, "train", num_samples=1000)
+            sess, train_input_paths, train_target_mask_paths, "train")
           logging.info(f"epoch {epoch}, "
                        f"global_step {global_step}, "
                        f"train dice_coefficient: {train_dice}")

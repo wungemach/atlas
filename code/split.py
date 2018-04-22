@@ -8,7 +8,8 @@ import re
 def _add_paths_to_lists(input_paths_by_slice,
                         input_paths_list,
                         target_mask_paths_list,
-                        prefix):
+                        prefix,
+                        merge_target_masks):
   """
   Retrieves the 1+ target mask paths corresponding to each input path in
   {input_paths_by_slice} and, for each target mask path, appends the input path
@@ -41,9 +42,15 @@ def _add_paths_to_lists(input_paths_by_slice,
                               f"image-slice{slice_id}.jpg")
     target_mask_paths = glob.glob(os.path.join(prefix, target_mask_path_regex),
                                   recursive=True)
-    for target_mask_path in target_mask_paths:
-      input_paths_list.append(input_path)
-      target_mask_paths_list.append(target_mask_path)
+    if merge_target_masks:
+      # Adds one path merging all target masks
+      input_paths_list.append([input_path])
+      target_mask_paths_list.append(target_mask_paths)
+    else:
+      # Adds separate paths for each target mask
+      for target_mask_path in target_mask_paths:
+        input_paths_list.append([input_path])
+        target_mask_paths_list.append([target_mask_path])
 
 def setup_train_dev_split(FLAGS):
   if FLAGS.split_type == "by_patient":
@@ -78,15 +85,22 @@ def setup_train_dev_split(FLAGS):
     pass  # TODO
   elif FLAGS.split_type == "by_slice":
     # A shuffled list of all paths to input (MRI) slices
-    input_paths_regex = "Site*/**/*_t1w_deface_stx/*.jpg"
+    if FLAGS.input_regex == None:
+      input_paths_regex = "Site*/**/*_t1w_deface_stx/*.jpg"
+    else:
+      input_paths_regex = FLAGS.input_regex
+
     input_paths_by_slice = glob.glob(os.path.join(prefix, input_paths_regex),
                                      recursive=True)
     random.shuffle(input_paths_by_slice)
 
-    # Bins the first p into the dev set; bins the others into the training set
-    train_input_paths_by_slice = input_paths_by_slice[FLAGS.p:]
-    dev_input_paths_by_slice = input_paths_by_slice[:FLAGS.p]
-
+    if FLAGS.input_regex == None:
+      # Bins the first p into the dev set; bins the others into the training set
+      train_input_paths_by_slice = input_paths_by_slice[FLAGS.p:]
+      dev_input_paths_by_slice = input_paths_by_slice[:FLAGS.p]
+    else:
+      train_input_paths_by_slice = input_paths_by_slice
+      dev_input_paths_by_slice = input_paths_by_slice
   elif FLAGS.split_type == "by_site":
     pass  # TODO
   else:
@@ -95,11 +109,13 @@ def setup_train_dev_split(FLAGS):
   _add_paths_to_lists(train_input_paths_by_slice,
                       train_input_paths,
                       train_target_mask_paths,
-                      prefix)
+                      prefix,
+                      FLAGS.merge_target_masks)
   _add_paths_to_lists(dev_input_paths_by_slice,
                       dev_input_paths,
                       dev_target_mask_paths,
-                      prefix)
+                      prefix,
+                      FLAGS.merge_target_masks)
 
   return (
     train_input_paths,
