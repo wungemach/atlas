@@ -30,19 +30,24 @@ class SliceBatchGenerator(object):
                input_path_lists,
                target_mask_path_lists,
                batch_size,
-               max_num_batches=1000,
+               max_num_refill_batches=1000,
+               num_samples=None,
                shape=(197, 233),
                shuffle=False,
                use_fake_target_masks=False):
     """
+    Initializes a SliceBatchGenerator.
+
     Inputs:
     - input_path_lists: A list of lists of Python strs that represent paths
       to input image files.
     - target_mask_path_lists: A list of lists of Python strs that represent
       paths to target mask files.
     - batch_size: A Python int that represents the batch size.
-    - max_num_batches: A Python int that represents the maximum number of
-      slices to refill at a time.
+    - max_num_refill_batches: A Python int that represents the maximum number
+      of batches of slices to refill at a time.
+    - num_samples: A Python int or None. If None, then uses the entire
+      {input_path_lists} and {target_mask_path_lists}.
     - shape: A Python tuple of ints that represents the shape to resize the
       slice as (height, width).
     - shuffle: A Python bool that represents whether to shuffle the batches
@@ -57,7 +62,11 @@ class SliceBatchGenerator(object):
     self._target_mask_path_lists = target_mask_path_lists
     self._batch_size = batch_size
     self._batches = []
-    self._max_num_batches = max_num_batches
+    self._max_num_refill_batches = max_num_refill_batches
+    self._num_samples = num_samples
+    if self._num_samples != None:
+      self._input_path_lists = self._input_path_lists[:self._num_samples]
+      self._target_mask_path_lists = self._target_mask_path_lists[:self._num_samples]
     self._pointer = 0
     self._order = list(range(len(self._input_path_lists)))
     self._shape = shape
@@ -85,7 +94,7 @@ class SliceBatchGenerator(object):
     #    ...]
     # {input_path_lists} and {target_mask_path_lists} are lists of paths corresponding
     #   to the indices given by {path_indices}
-    start_idx, end_idx = self._pointer, self._pointer + self._max_num_batches
+    start_idx, end_idx = self._pointer, self._pointer + self._max_num_refill_batches
     path_indices = self._order[start_idx:end_idx]
     input_path_lists = [
       self._input_path_lists[path_idx] for path_idx in path_indices]
@@ -94,7 +103,7 @@ class SliceBatchGenerator(object):
     zipped_path_lists = zip(input_path_lists, target_mask_path_lists)
 
     # Updates self._pointer for the next call to {self.refill_batches}
-    self._pointer += self._max_num_batches
+    self._pointer += self._max_num_refill_batches
 
     for input_path_list, target_mask_path_list in zipped_path_lists:
       if self._use_fake_target_masks:
@@ -130,7 +139,7 @@ class SliceBatchGenerator(object):
           # Converts all values >0 to 1s
           target_mask
         ))
-      if len(examples) >= self._batch_size * self._max_num_batches:
+      if len(examples) >= self._batch_size * self._max_num_refill_batches:
         break
 
     for batch_start_idx in range(0, len(examples), self._batch_size):

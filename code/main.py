@@ -33,6 +33,11 @@ tf.app.flags.DEFINE_string("train_dir", "",
                            "be saved. Defaults to "
                            "experiments/{experiment_name}.")
 
+# Dev
+tf.app.flags.DEFINE_integer("dev_num_samples", None,
+                            "Sets the number of samples to evaluate from the "
+                            "dev set. None means evaluate on all.")
+
 # Split
 tf.app.flags.DEFINE_string("cv_type", "lpocv",
                            "Sets the type of cross validation. Options: "

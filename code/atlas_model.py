@@ -1,4 +1,5 @@
 import logging
+import matplotlib.pyplot as plt
 import numpy as np
 import os
 import sys
@@ -269,7 +270,11 @@ class ATLASModel(object):
     return predicted_masks
 
 
-  def get_dev_loss(self, sess, dev_input_paths, dev_target_mask_paths):
+  def get_dev_loss(self,
+                   sess,
+                   dev_input_paths,
+                   dev_target_mask_paths,
+                   num_samples=None):
     """
     Get loss for entire dev set.
 
@@ -279,6 +284,8 @@ class ATLASModel(object):
       image files in the dev set.
     - dev_target_mask_paths: A list of Python strs that represent pathnames to
       input target mask files in the dev set.
+    - num_samples: A Python int or None. If None, then evaluates on the entire
+      dev set.
 
     Outputs:
     - dev_loss: A Python float that represents the average loss across the dev
@@ -292,6 +299,7 @@ class ATLASModel(object):
     sbg = SliceBatchGenerator(dev_input_paths,
                               dev_target_mask_paths,
                               self.FLAGS.batch_size,
+                              num_samples=num_samples,
                               shape=(self.FLAGS.slice_height,
                                      self.FLAGS.slice_width),
                               use_fake_target_masks=self.FLAGS.use_fake_target_masks)
@@ -454,8 +462,10 @@ class ATLASModel(object):
         # Sometimes evaluates model on dev loss, train F1/EM and dev F1/EM
         if global_step % self.FLAGS.eval_every == 0:
           # Logs loss for entire dev set to TensorBoard
-          dev_loss = self.get_dev_loss(
-            sess, dev_input_paths, dev_target_mask_paths)
+          dev_loss = self.get_dev_loss(sess,
+                                       dev_input_paths,
+                                       dev_target_mask_paths,
+                                       self.FLAGS.dev_num_samples)
           logging.info(f"epoch {epoch}, "
                        f"global_step {global_step}, "
                        f"dev_loss {dev_loss}")
