@@ -15,7 +15,12 @@ $ git clone --recurse-submodules https://github.com/gnedivad/atlas
   ```
 
 ## Helpful flags to toggle
-- `merge_target_masks`: merges target masks (if more than one exists) for each slice into a single mask. Here, I verify that the baseline model can overfit to a merged lesion mask for a single slice.
+- `--merge_target_masks`: merges target masks (if more than one exists) for each slice into a single mask. Here, I verify that the baseline model can overfit to a merged lesion mask for a single slice.
   ```bash
   $ python main.py --experiment_name=merge --input_regex=Site2/031844/t01/031844_t1w_deface_stx/image-slice102.jpg --merge_target_masks
+  ```
+
+- `--dev_num_samples`: sets the number of examples to evaluate from the dev set (and accelerate training).
+  ```bash
+  $ python main.py --experiment_name=quick_dev --dev_num_samples=1000
   ```
