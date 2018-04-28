@@ -16,15 +16,70 @@ DEFAULT_DATA_DIR = os.path.join(MAIN_DIR, "data")
 # Relative path of the experiments directory
 EXPERIMENTS_DIR = os.path.join(MAIN_DIR, "experiments")
 
-# Training
+# General
+tf.app.flags.DEFINE_integer("batch_size", 100, "Sets the batch size.")
+tf.app.flags.DEFINE_integer("eval_every", 500,
+                            "How many iterations to do per calculating the "
+                            "dice coefficient on the dev set. This operation "
+                            "is time-consuming, so should not be done often.")
 tf.app.flags.DEFINE_string("experiment_name", "",
                            "Creates a dir with this name in the experiments/ "
                            "directory, to which checkpoints and logs related "
                            "to this experiment will be saved.")
 tf.app.flags.DEFINE_integer("gpu", 0,
                             "Sets which GPU to use, if you have multiple.")
+tf.app.flags.DEFINE_integer("keep", None,
+                            "How many checkpoints to keep. None means keep "
+                            "all. These files are storage-consuming so should "
+                            "not be kept in aggregate.")
 tf.app.flags.DEFINE_string("mode", "train",
                            "Options: {train,show_examples}.")
+tf.app.flags.DEFINE_integer("print_every", 1,
+                            "How many iterations to do per print.")
+tf.app.flags.DEFINE_integer("save_every", 500,
+                            "How many iterations to do per save.")
+
+# Data
+tf.app.flags.DEFINE_string("data_dir", DEFAULT_DATA_DIR,
+                           "Sets the dir in which to find data for training. "
+                           "Defaults to data/.")
+tf.app.flags.DEFINE_string("input_regex", None,
+                           "Sets the regex to use for input paths. If set, "
+                           "{FLAGS.p} will be ignored and train and dev sets "
+                           "will use this same input regex. Only works when "
+                           "{FLAGS.split_type} is by_slice.")
+tf.app.flags.DEFINE_boolean("merge_target_masks", True,
+                            "Sets whether to merge target masks or not.")
+tf.app.flags.DEFINE_boolean("use_fake_target_masks", False,
+                            "Sets whether to use fake target masks or not.")
+tf.app.flags.DEFINE_boolean("use_volumetric", False,
+                            "Sets whether to use volumetric data or not.")
+
+# Split
+tf.app.flags.DEFINE_string("cv_type", "lpocv",
+                           "Sets the type of cross validation. Options: "
+                           "{lpocv,loocv}.")
+tf.app.flags.DEFINE_integer("p", None,
+                            "Sets p in leave-p-out cross-validation. Defaults "
+                            "to floor(0.3 * n) where n represents the number "
+                            "groups implied by {split_type}; e.g. n=220 for "
+                            "by_patient, n=229 for by_scan, n=9 for by_site.")
+tf.app.flags.DEFINE_string("split_type", "by_slice",
+                           "Sets the type of split between the train and dev "
+                           "sets i.e. whether certain slices or volumes of "
+                           "slices must be part of the same split. Options: "
+                           "{by_patient,by_scan,by_slice,by_site}. e.g. for "
+                           "by_patient, slices from a given patient must be "
+                           "either all part of the train split or all part "
+                           "of the dev split.")
+
+# Training
+tf.app.flags.DEFINE_float("dropout", 0.15,
+                          "Sets the fraction of units randomly dropped on "
+                          "non-recurrent connections.")
+tf.app.flags.DEFINE_float("learning_rate", 0.001, "Sets the learning rate.")
+tf.app.flags.DEFINE_float("max_gradient_norm", 5.0,
+                          "Clips the gradients to this norm.")
 tf.app.flags.DEFINE_integer("num_epochs", None,
                             "Sets the number of epochs to train. None means "
                             "train indefinitely.")
@@ -38,48 +93,6 @@ tf.app.flags.DEFINE_integer("dev_num_samples", None,
                             "Sets the number of samples to evaluate from the "
                             "dev set. None means evaluate on all.")
 
-# Split
-tf.app.flags.DEFINE_string("cv_type", "lpocv",
-                           "Sets the type of cross validation. Options: "
-                           "{lpocv,loocv}.")
-tf.app.flags.DEFINE_integer("p", None,
-                           "Sets p for leave-p-out cross-validation. Defaults "
-                           "to floor(0.3 * n) where n represents the number "
-                           "groups implied by {split_type}; e.g. n=220 for "
-                           "by_patient, n=229 for by_scan, n=9 for by_site.")
-tf.app.flags.DEFINE_string("split_type", "by_slice",
-                           "Sets the type of split between the train and dev "
-                           "sets. Options: "
-                           "{by_patient,by_scan,by_slice,by_site}.")
-
-# Logging
-tf.app.flags.DEFINE_integer("eval_every", 500,
-                            "How many iterations to do per calculating the "
-                            "dice coefficient on the dev set. This operation "
-                            "is time-consuming, so should not be done often.")
-tf.app.flags.DEFINE_integer("print_every", 1,
-                            "How many iterations to do per print.")
-tf.app.flags.DEFINE_integer("save_every", 500,
-                            "How many iterations to do per save.")
-tf.app.flags.DEFINE_integer("keep", None,
-                            "How many checkpoints to keep. None means keep "
-                            "all. These files are storage-consuming so should "
-                            "not be kept in aggregate.")
-
-# Data
-tf.app.flags.DEFINE_string("data_dir", DEFAULT_DATA_DIR,
-                           "Sets the dir in which to find data for training. "
-                           "Defaults to data/.")
-tf.app.flags.DEFINE_string("input_regex", None,
-                           "Sets the regex to use for input paths. If set, "
-                           "{FLAGS.p} will be ignored and train and dev sets "
-                           "will use this same input regex.")
-tf.app.flags.DEFINE_boolean("merge_target_masks", False,
-                            "Sets whether to merge target masks or not.")
-tf.app.flags.DEFINE_boolean("use_fake_target_masks", False,
-                            "Sets whether to use fake target masks or not.")
-
-
 # Model
 tf.app.flags.DEFINE_string("model_name", "ATLASModel",
                            "Sets the name of the model to use; the name must "
@@ -87,18 +100,6 @@ tf.app.flags.DEFINE_string("model_name", "ATLASModel",
                            "atlas_model.py.")
 tf.app.flags.DEFINE_integer("slice_height", 232, "Sets the image height.")
 tf.app.flags.DEFINE_integer("slice_width", 196, "Sets the image width.")
-
-# ResNet
-tf.app.flags.DEFINE_integer("resnet_size", 34, "Sets the ResNet size.")
-
-# Hyperparameters
-tf.app.flags.DEFINE_integer("batch_size", 100, "Sets the batch size.")
-tf.app.flags.DEFINE_float("dropout", 0.15,
-                          "Sets the fraction of units randomly dropped on "
-                          "non-recurrent connections.")
-tf.app.flags.DEFINE_float("learning_rate", 0.001, "Sets the learning rate.")
-tf.app.flags.DEFINE_float("max_gradient_norm", 5.0,
-                          "Clips the gradients to this norm.")
 
 FLAGS = tf.app.flags.FLAGS
 os.environ["CUDA_VISIBLE_DEVICES"] = str(FLAGS.gpu)
@@ -144,6 +145,7 @@ def main(_):
   print(f"This code was developed and tested on TensorFlow 1.7.0. "
         f"Your TensorFlow version: {tf.__version__}.")
 
+  # Defines {FLAGS.train_dir}, maybe based on {FLAGS.experiment_dir}
   if not FLAGS.experiment_name:
     raise Exception("You need to specify an --experiment_name or --train_dir.")
   FLAGS.train_dir = (FLAGS.train_dir
@@ -156,7 +158,7 @@ def main(_):
   #############################################################################
   # Train/dev split and model definition                                      #
   #############################################################################
-  # Initializes model
+  # Initializes model from atlas_model.py
   module = __import__("atlas_model")
   model_class = getattr(module, FLAGS.model_name)
   atlas_model = model_class(FLAGS)
@@ -170,6 +172,7 @@ def main(_):
                         level=logging.INFO)
 
     # Saves a record of flags as a .json file in {train_dir}
+    # TODO: read the existing flags.json file
     with open(os.path.join(FLAGS.train_dir, "flags.json"), "w") as fout:
       flags = {k: v.serialize() for k, v in FLAGS.__flags.items()}
       json.dump(flags, fout)
@@ -180,6 +183,24 @@ def main(_):
 
       # Trains the model
       atlas_model.train(sess, *setup_train_dev_split(FLAGS))
+  elif FLAGS.mode == "show_examples":
+    with tf.Session(config=config) as sess:
+      # Sets logging configuration
+      logging.basicConfig(level=logging.INFO)
+
+      # Loads the most recent model
+      initialize_model(sess, atlas_model, FLAGS.train_dir, expect_exists=True)
+
+      # Shows examples from the dev set
+      _, _, dev_input_paths, dev_target_mask_paths =\
+        setup_train_dev_split(FLAGS)
+      dev_dice = atlas_model.calculate_dice_coefficient(sess,
+                                                        dev_input_paths,
+                                                        dev_target_mask_paths,
+                                                        "dev",
+                                                        num_samples=1000,
+                                                        plot=True)
+      logging.info(f"dev dice_coefficient: {dev_dice}")
 
 
 if __name__ == "__main__":

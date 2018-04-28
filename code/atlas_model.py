@@ -19,7 +19,7 @@ class ATLASModel(object):
     Initializes the ATLAS model.
 
     Inputs:
-    - FLAGS: A _FlagValuesWrapper object passed in from main.py.
+    - FLAGS: A _FlagValuesWrapper object.
     """
     self.FLAGS = FLAGS
 
@@ -140,11 +140,18 @@ class ATLASModel(object):
       and low loss for [0, 1, 0, 1, 1].
     """
     with tf.variable_scope("loss"):
-      sigmoid_ce_with_logits = tf.nn.sigmoid_cross_entropy_with_logits
-      # {loss} is the same shape as {self.logits_op} and {self.target_masks_op}
-      loss = sigmoid_ce_with_logits(logits=self.logits_op,
-                                    labels=self.target_masks_op,
-                                    name="ce")
+      # sigmoid_ce_with_logits = tf.nn.sigmoid_cross_entropy_with_logits
+      # # {loss} is the same shape as {self.logits_op} and {self.target_masks_op}
+      # loss = sigmoid_ce_with_logits(logits=self.logits_op,
+      #                               labels=self.target_masks_op,
+      #                               name="ce")
+
+      weighted_ce_with_logits = tf.nn.weighted_cross_entropy_with_logits
+      loss = weighted_ce_with_logits(logits=self.logits_op,
+                                     targets=self.target_masks_op,
+                                     pos_weight=100.0,
+                                     name="ce")
+
       self.loss = tf.reduce_mean(loss)  # scalar mean across batch
       tf.summary.scalar("loss", self.loss)  # logs to TensorBoard
 
@@ -367,16 +374,34 @@ class ATLASModel(object):
     for batch in sbg.get_batch():
       predicted_masks = self.get_predicted_masks(sess, batch)
 
-      zipped_masks = zip(predicted_masks, batch.target_masks_batch)
-      for idx, (predicted_mask, target_mask) in enumerate(zipped_masks):
-        num_examples += 1
+      zipped_masks = zip(predicted_masks,
+                         batch.target_masks_batch,
+                         batch.input_paths_batch,
+                         batch.target_mask_path_lists_batch)
+      for idx, (predicted_mask,
+                target_mask,
+                input_path,
+                target_mask_path_list) in enumerate(zipped_masks):
+        dice_coefficient = utils.dice_coefficient(predicted_mask, target_mask)
+        if dice_coefficient >= 0.0:
+          dice_coefficient_total += dice_coefficient
+          num_examples += 1
 
-        dice_coefficient_total += \
-          utils.dice_coefficient(predicted_mask, target_mask)
-
-        # Optionally plot
-        if plot:
-          pass  # TODO
+          if print_to_screen:
+            # Whee! We predicted at least one lesion pixel!
+            logging.info(f"Dice coefficient of valid example {num_examples}: "
+                         f"{dice_coefficient}")
+          if plot:
+            f, axarr = plt.subplots(1, 2)
+            f.suptitle(input_path)
+            axarr[0].imshow(predicted_mask)
+            axarr[0].set_title("Predicted")
+            axarr[1].imshow(target_mask)
+            axarr[1].set_title("Target")
+            examples_dir = os.path.join(self.FLAGS.train_dir, "examples")
+            if not os.path.exists(examples_dir):
+              os.makedirs(examples_dir)
+            f.savefig(os.path.join(examples_dir, str(num_examples).zfill(4)))
 
         if num_samples != None and num_examples >= num_samples:
           break

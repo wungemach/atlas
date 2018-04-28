@@ -7,7 +7,11 @@ from PIL import Image
 
 
 class Batch(object):
-  def __init__(self, inputs_batch, target_masks_batch):
+  def __init__(self,
+               inputs_batch,
+               target_masks_batch,
+               input_paths_batch,
+               target_mask_path_lists_batch):
     """
     Initializes a Batch.
 
@@ -16,6 +20,11 @@ class Batch(object):
       represents a batch of inputs.
     - target_masks_batch: A numpy array with shape batch_size by input_dims
       that represents a batch of target masks.
+    - input_paths_batch: A tuple of Python strs that represents a batch of
+      input paths.
+    - target_mask_path_lists_batch: A tuple of lists of Python strs that
+      represents a batch of target mask path lists, where each list provides
+      the target mask paths corresponding to the input paths.
 
     Outputs:
     - None
@@ -23,6 +32,8 @@ class Batch(object):
     self.inputs_batch = inputs_batch
     self.target_masks_batch = target_masks_batch
     self.batch_size = len(self.inputs_batch)
+    self.input_paths_batch = input_paths_batch
+    self.target_mask_path_lists_batch = target_mask_path_lists_batch
 
 
 class SliceBatchGenerator(object):
@@ -41,8 +52,8 @@ class SliceBatchGenerator(object):
     Inputs:
     - input_path_lists: A list of lists of Python strs that represent paths
       to input image files.
-    - target_mask_path_lists: A list of lists of Python strs that represent
-      paths to target mask files.
+    - target_mask_path_lists: A list of list of lists of Python strs that
+      represent paths to target mask files.
     - batch_size: A Python int that represents the batch size.
     - max_num_refill_batches: A Python int that represents the maximum number
       of batches of slices to refill at a time.
@@ -120,11 +131,12 @@ class SliceBatchGenerator(object):
         input = input.resize(self._shape[::-1], Image.NEAREST)
         input = np.asarray(input)
 
-        # Assumes {target_mask_path_list} is a list with length >= 1;
+        # Assumes {target_mask_path_list} is a list of lists, where the outer
+        # list has length 1 and the inner list has length >= 1;
         # Merges target masks if list contains more than one path
         target_mask_list = list(map(
           lambda target_mask_path: Image.open(target_mask_path).convert("L"),
-          target_mask_path_list))
+          target_mask_path_list[0]))
         target_mask_list = list(map(
           lambda target_mask: target_mask.resize(self._shape[::-1], Image.NEAREST),
           target_mask_list))
@@ -137,15 +149,21 @@ class SliceBatchGenerator(object):
         examples.append((
           input,
           # Converts all values >0 to 1s
-          target_mask
+          target_mask,
+          input_path_list[0],
+          target_mask_path_list[0]
         ))
       if len(examples) >= self._batch_size * self._max_num_refill_batches:
         break
 
     for batch_start_idx in range(0, len(examples), self._batch_size):
-      input_batch, target_mask_batch =\
-        zip(*examples[batch_start_idx:batch_start_idx+self._batch_size])
-      self._batches.append((input_batch, target_mask_batch))
+      (inputs_batch, target_masks_batch, input_paths_batch,
+       target_mask_path_lists_batch) =\
+         zip(*examples[batch_start_idx:batch_start_idx+self._batch_size])
+      self._batches.append((np.asarray(inputs_batch),
+                            np.asarray(target_masks_batch),
+                            input_paths_batch,
+                            target_mask_path_lists_batch))
 
 
   def get_batch(self):
@@ -159,11 +177,13 @@ class SliceBatchGenerator(object):
       if len(self._batches) == 0:
         break
 
-      # Pops the next batch, both numpy arrays of batch_size by input_dims
-      (inputs_batch, target_masks_batch) = self._batches.pop(0)
+      # Pops the next batch, a tuple of four items; the first two are numpy
+      # arrays {inputs_batch} and {target_mask_batch} of batch_size by
+      # input_dims, the last two are tuples of paths.
+      batch = self._batches.pop(0)
 
       # Wraps the numpy arrays into a Batch object
-      batch = Batch(inputs_batch, target_masks_batch)
+      batch = Batch(*batch)
 
       yield batch
 
