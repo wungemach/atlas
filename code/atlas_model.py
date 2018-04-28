@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 import utils
 from data_batcher import SliceBatchGenerator
-from modules import ConvEncoder, DeconvDecoder
+from modules import ConvEncoder, DeconvDecoder, UNet
 
 
 class ATLASModel(object):
@@ -97,25 +97,7 @@ class ATLASModel(object):
     - self.predicted_mask_probs_op: A Tensor of the same shape as
       self.logits_op e.g. (100, 233, 197), and passed through a sigmoid layer.
     """
-    # from models.official.resnet.resnet_model import Model as ResNet
-    # encoder = ResNet(resnet_size=self.FLAGS.resnet_size,
-    #                  bottleneck=self.FLAGS.resnet_size < 50,
-    #                  num_classes=1,  # TODO: replace
-    #                  num_filters=64,
-    #                  kernel_size=7,
-    #                  conv_stride=2,
-    #                  first_pool_size=3,
-    #                  first_pool_stride=2,
-    #                  second_pool_size=7,
-    #                  second_pool_stride=1,
-    #                  block_sizes=utils.get_block_sizes(resnet_size),
-    #                  block_strides=[1, 2, 2, 2],
-    #                  final_size=512 if self.FLAGS.resnet_size < 50 else 2048,
-    #                  version=2,  # resnet_model.DEFAULT_VERSION
-    #                  data_format=None,
-    #                  dtype=tf.float32)  # resnet_model.DEFAULT_DTYPE
-
-    # assert self.input_dims == self.inputs_op.get_shape().as_list()[1:]
+    assert(self.input_dims == self.inputs_op.get_shape().as_list()[1:])
     encoder = ConvEncoder(input_shape=self.input_dims,
                           keep_prob=self.keep_prob,
                           scope_name="encoder")
@@ -538,6 +520,29 @@ class ZeroATLASModel(ATLASModel):
                         shape=())
     self.logits_op = tf.ones(shape=[self.FLAGS.batch_size] + self.input_dims,
                              dtype=tf.float32) * c
+    self.predicted_mask_probs_op = tf.sigmoid(self.logits_op)
+
+
+class UNetATLASModel(ATLASModel):
+  def __init__(self, FLAGS):
+    """
+    Initializes the U-Net ATLAS model, which predicts 0 for the entire mask
+    no matter what, which performs well when --use_fake_target_masks.
+
+    Inputs:
+    - FLAGS: A _FlagValuesWrapper object passed in from main.py.
+    """
+    super().__init__(FLAGS)
+
+  def build_graph(self):
+    assert(self.input_dims == self.inputs_op.get_shape().as_list()[1:])
+    unet = UNet(input_shape=self.input_dims,
+                keep_prob=self.keep_prob,
+                output_shape=self.input_dims,
+                scope_name="unet")
+    self.logits_op = tf.squeeze(
+      unet.build_graph(tf.expand_dims(self.inputs_op, 3)), axis=3)
+
     self.predicted_mask_probs_op = tf.sigmoid(self.logits_op)
 
 
