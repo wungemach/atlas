@@ -106,30 +106,30 @@ os.environ["CUDA_VISIBLE_DEVICES"] = str(FLAGS.gpu)
 
 
 def initialize_model(sess, model, train_dir, expect_exists=False):
-    """
-    Initializes the model from {train_dir}.
+  """
+  Initializes the model from {train_dir}.
 
-    Inputs:
-    - sess: A TensorFlow Session object.
-    - model: An ATLASModel object.
-    - train_dir: A Python str that represents the relative path to train dir
-      e.g. "../experiments/001".
-    - expect_exists: If True, throw an error if no checkpoint is found;
-      otherwise, initialize fresh model if no checkpoint is found.
-    """
-    ckpt = tf.train.get_checkpoint_state(train_dir)
-    v2_path = ckpt.model_checkpoint_path + ".index" if ckpt else ""
-    if (ckpt and (tf.gfile.Exists(ckpt.model_checkpoint_path)
-        or tf.gfile.Exists(v2_path))):
-      print(f"Reading model parameters from {ckpt.model_checkpoint_path}")
-      model.saver.restore(sess, ckpt.model_checkpoint_path)
+  Inputs:
+  - sess: A TensorFlow Session object.
+  - model: An ATLASModel object.
+  - train_dir: A Python str that represents the relative path to train dir
+    e.g. "../experiments/001".
+  - expect_exists: If True, throw an error if no checkpoint is found;
+    otherwise, initialize fresh model if no checkpoint is found.
+  """
+  ckpt = tf.train.get_checkpoint_state(train_dir)
+  v2_path = ckpt.model_checkpoint_path + ".index" if ckpt else ""
+  if (ckpt and (tf.gfile.Exists(ckpt.model_checkpoint_path)
+      or tf.gfile.Exists(v2_path))):
+    print(f"Reading model parameters from {ckpt.model_checkpoint_path}")
+    model.saver.restore(sess, ckpt.model_checkpoint_path)
+  else:
+    if expect_exists:
+      raise Exception(f"There is no saved checkpoint at {train_dir}")
     else:
-      if expect_exists:
-        raise Exception(f"There is no saved checkpoint at {train_dir}")
-      else:
-        print(f"There is no saved checkpoint at {train_dir}. Creating model "
-              f"with fresh parameters.")
-        sess.run(tf.global_variables_initializer())
+      print(f"There is no saved checkpoint at {train_dir}. Creating model "
+            f"with fresh parameters.")
+      sess.run(tf.global_variables_initializer())
 
 
 def main(_):
