@@ -122,7 +122,9 @@ class SliceBatchGenerator(object):
         # Image.resize expects (width, height) order
         examples.append((
           np.asarray(input.resize(self._shape[::-1], Image.NEAREST)),
-          np.zeros(self._shape)
+          np.zeros(self._shape),
+          input_path_list[0],
+          "fake_target_mask"
         ))
       else:
         # Assumes {input_path_list} is a list with length 1;

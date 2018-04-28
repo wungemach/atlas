@@ -33,7 +33,7 @@ tf.app.flags.DEFINE_integer("keep", None,
                             "all. These files are storage-consuming so should "
                             "not be kept in aggregate.")
 tf.app.flags.DEFINE_string("mode", "train",
-                           "Options: {train,show_examples}.")
+                           "Options: {train,eval}.")
 tf.app.flags.DEFINE_integer("print_every", 1,
                             "How many iterations to do per print.")
 tf.app.flags.DEFINE_integer("save_every", 500,
@@ -183,7 +183,7 @@ def main(_):
 
       # Trains the model
       atlas_model.train(sess, *setup_train_dev_split(FLAGS))
-  elif FLAGS.mode == "show_examples":
+  elif FLAGS.mode == "eval":
     with tf.Session(config=config) as sess:
       # Sets logging configuration
       logging.basicConfig(level=logging.INFO)

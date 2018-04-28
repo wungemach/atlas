@@ -1,6 +1,8 @@
 # ATLAS
 ## Setup
-Visit the [ATLAS website](http://fcon_1000.projects.nitrc.org/indi/retro/atlas.html) and complete the [form](https://docs.google.com/forms/d/e/1FAIpQLSclH8padHr9zwdQVx9YY_yeM_4OqD1OQFvYcYpAQKaqC6Vscg/viewform) to request access for the dataset. I've arranged for the maintainers of the dataset to approve all requests from students in our course, so include your affiliation with CS 230 in the Description field. You will receive an email from the Neural Plasticity and Neurorehabilitation Laboratory with the encryption key. I received mine within one business day.
+Visit the [ATLAS website](http://fcon_1000.projects.nitrc.org/indi/retro/atlas.html) and complete the [form](https://docs.google.com/forms/d/e/1FAIpQLSclH8padHr9zwdQVx9YY_yeM_4OqD1OQFvYcYpAQKaqC6Vscg/viewform) to request access for the dataset.
+
+I've arranged for the maintainers of the dataset to approve all requests from students in our course, so include your affiliation with CS 230 in the Description field. You will receive an email from the Neural Plasticity and Neurorehabilitation Laboratory with the encryption key. I received mine within one business day.
 
 ### Mac OS or Linux users
 Clone the repo then run the `get-started.sh` script. You will be prompted to enter the encryption key emailed to you.
@@ -11,8 +13,6 @@ $ sh get-started.sh
 ```
 
 ### Windows users
-**The following instructions are incomplete. Please email me.**
-
 Create a virtual environment and install the requirements.
 ```bash
 > conda create -n py36 python=3.6 anaconda
@@ -29,9 +29,35 @@ Download the [ATLAS encrypted compressed dataset](ftp://www.nitrc.org/fcon_1000/
 (py36) > C:\OpenSSL-Win64\openssl aes-256-cbc -d -a -in <encrypted_filename> -out <decrypted_filename>
 ```
 
-Unpack the decrypted compressed dataset and put it into the `atlas/data/` directory. (TODO: instructions)
+Unpack the decrypted compressed dataset and put it into the `atlas/data/` directory. Please email me for further instructions if you have issues with this step.
 
 ## How to run experiments
+All functionality starts in `atlas/code/main.py`. Overall, there are three modes:
+- `train`: Trains a model (default).
+- `eval`: Evaluates a model.
+
+### Your first experiment
+Running the following command will start an experiment called `0001` training the model `ZeroATLASModel` for 1 epoch. Recall that an epoch completes when the model has been trained on the entire training set. There might exist many steps per epoch, depending on the batch size. For example, if the training set has 30,000 examples and the batch size is set to 100, then an epoch requires 300 steps to complete.
+```bash
+(py36) $ cd atlas/code
+(py36) $ python main.py --experiment_name=0001 --model_name=ZeroATLASModel --num_epochs=1 --use_fake_target_masks
+```
+
+This particular `ZeroATLASModel` predicts 0 for the entire mask no matter what (i.e. it never predicts the presence of a lesion), which performs well when using fake target masks, which manually sets all masks to 0. You can see it's stellar performance in `experiments/0001/log.txt`, where a loss of `0.0` should be printed every training iteration. It's helpful to use the `--use_fake_target_masks` test as a sanity check for new models that you implement.
+
+### Your first real experiment
+Running the following command will start an experiment called `0002` training the default encoder-decoder `ATLASModel` for 10 epochs. It will evaluate the performance of the model on the development set every 100 steps and save the model every 100 steps.
+```bash
+(py36) $ python main.py --experiment_name=0002 --num_epochs=10 --use_fake_target_masks --eval_every=100 --save_every=100
+```
+You can track the progress of training one of two ways:
+- `log.txt`:
+- TensorBoard:
+
+
+
+
+
 - If `FLAGS.train_dir` contains a `"split.json"` file, the data batcher will use this split. This requires `FLAGS` to remain unchanged runs.
 
 ## Helpful flags for sanity checking
