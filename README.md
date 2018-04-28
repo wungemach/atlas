@@ -1,7 +1,38 @@
 # ATLAS
+## Setup
+Visit the [ATLAS website](http://fcon_1000.projects.nitrc.org/indi/retro/atlas.html) and complete the [form](https://docs.google.com/forms/d/e/1FAIpQLSclH8padHr9zwdQVx9YY_yeM_4OqD1OQFvYcYpAQKaqC6Vscg/viewform) to request access for the dataset. I've arranged for the maintainers of the dataset to approve all requests from students in our course, so include your affiliation with CS 230 in the Description field. You will receive an email from the Neural Plasticity and Neurorehabilitation Laboratory with the encryption key. I received mine within one business day.
+
+### Mac OS or Linux users
+Clone the repo then run the `get-started.sh` script. You will be prompted to enter the encryption key emailed to you.
 ```bash
 $ git clone --recurse-submodules https://github.com/gnedivad/atlas
+$ cd atlas
+$ sh get-started.sh
 ```
+
+### Windows users
+**The following instructions are incomplete. Please email me.**
+
+Create a virtual environment and install the requirements.
+```bash
+> conda create -n py36 python=3.6 anaconda
+> activate py36
+(py36) > cd atlas
+(py36) > pip install -r requirements.txt
+```
+
+Download [OpenSSL](https://slproweb.com/products/Win32OpenSSL.html) and follow the installation instructions. I installed `Win64 OpenSSL v1.0.2o Light` to the location `C:\OpenSSL-Win64`.
+
+Download the [ATLAS encrypted compressed dataset](ftp://www.nitrc.org/fcon_1000/htdocs/indi/retro/ATLAS/releases/R1.1/ATLAS_R1.1_encrypted.tar.gz).
+```bash
+(py36) > set OPENSSL_CONF=C:\OpenSSL-Win64\bin\openssl.cfg
+(py36) > C:\OpenSSL-Win64\openssl aes-256-cbc -d -a -in <encrypted_filename> -out <decrypted_filename>
+```
+
+Unpack the decrypted compressed dataset and put it into the `atlas/data/` directory. (TODO: instructions)
+
+## How to run experiments
+- If `FLAGS.train_dir` contains a `"split.json"` file, the data batcher will use this split. This requires `FLAGS` to remain unchanged runs.
 
 ## Helpful flags for sanity checking
 - `--use_fake_target_masks`: sets all target masks to entirely zeros, a label that all models should be able to learn. Here, I verify that model `ZeroATLASModel`, which predicts 0 for all masks, achieves a low loss.
