@@ -23,7 +23,7 @@ Create a virtual environment and install the requirements.
 
 Download [OpenSSL](https://slproweb.com/products/Win32OpenSSL.html) and follow the installation instructions. I installed `Win64 OpenSSL v1.0.2o Light` to the location `C:\OpenSSL-Win64`.
 
-Download the [ATLAS encrypted compressed dataset](ftp://www.nitrc.org/fcon_1000/htdocs/indi/retro/ATLAS/releases/R1.1/ATLAS_R1.1_encrypted.tar.gz).
+Download the [ATLAS encrypted compressed dataset](ftp://www.nitrc.org/fcon_1000/htdocs/indi/retro/ATLAS/releases/R1.1/ATLAS_R1.1_encrypted.tar.gz) and decrypt it. You will be prompted to enter the encryption key emailed to you.
 ```bash
 (py36) > set OPENSSL_CONF=C:\OpenSSL-Win64\bin\openssl.cfg
 (py36) > C:\OpenSSL-Win64\openssl aes-256-cbc -d -a -in <encrypted_filename> -out <decrypted_filename>
@@ -32,7 +32,7 @@ Download the [ATLAS encrypted compressed dataset](ftp://www.nitrc.org/fcon_1000/
 Unpack the decrypted compressed dataset and put it into the `atlas/data/` directory. Please email me for further instructions if you have issues with this step.
 
 ## How to run experiments
-All functionality starts in `atlas/code/main.py`. Overall, there are three modes:
+All functionality starts in `atlas/code/main.py`. Overall, there are two modes:
 - `train`: Trains a model (default).
 - `eval`: Evaluates a model.
 
@@ -48,17 +48,21 @@ This particular `ZeroATLASModel` predicts 0 for the entire mask no matter what (
 ### Your first real experiment
 Running the following command will start an experiment called `0002` training the default encoder-decoder `ATLASModel` for 10 epochs. It will evaluate the performance of the model on the development set every 100 steps and save the model every 100 steps.
 ```bash
-(py36) $ python main.py --experiment_name=0002 --num_epochs=10 --use_fake_target_masks --eval_every=100 --save_every=100
+(py36) $ python main.py --experiment_name=0002 --num_epochs=10 --eval_every=100 --save_every=100
 ```
 You can track the progress of training one of two ways:
 - `log.txt`:
 - TensorBoard:
 
+If you want to stop training and resume it at a later time, quit out of the command. Running the following command restores the weights from the latest checkpoint and reads the dataset split used in the previous training session from `experiments/0002/split.json` (but does not restore the values of the flags from `experiments/0002/flags.json`).
+```bash
+(py36) $ python main.py --experiment_name=0002
+```
+To use the same flags as the previous training session, specify them explicitly as follows:
+```bash
+(py36) $ python main.py --experiment_name=0002 --num_epochs=10 --eval_every=100 --save_every=100
+```
 
-
-
-
-- If `FLAGS.train_dir` contains a `"split.json"` file, the data batcher will use this split. This requires `FLAGS` to remain unchanged runs.
 
 ## Helpful flags for sanity checking
 - `--use_fake_target_masks`: sets all target masks to entirely zeros, a label that all models should be able to learn. Here, I verify that model `ZeroATLASModel`, which predicts 0 for all masks, achieves a low loss.
