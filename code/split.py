@@ -53,8 +53,10 @@ def _add_paths_to_lists(input_paths_list,
     # {input_paths} is a list of input paths with length the depth of the
     # volume for {FLAGS.use_volumetric} as True or length 1 otherwise
     for input_path in input_paths:
-      input_path_regex = ("Site(?P<site_id>[0-9]+)/(?P<patient_id>[0-9]+)/"
-                          "(?P<scan_id>t[0-9]+)/[0-9]+_t1w_deface_stx/"
+      input_path_regex = ("Site(?P<site_id>[0-9]+)(?:\\\|/)+"
+                          "(?P<patient_id>[0-9]+)(?:\\\|/)+"
+                          "(?P<scan_id>t[0-9]+)(?:\\\|/)+"
+                          "[0-9]+_t1w_deface_stx(?:\\\|/)+"
                           "image-slice(?P<slice_id>[0-9]+).jpg")
       site_id, patient_id, scan_id, slice_id = re.findall(input_path_regex,
                                                           input_path)[0]
