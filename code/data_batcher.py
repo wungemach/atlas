@@ -80,6 +80,12 @@ class SliceBatchGenerator(object):
       self._target_mask_path_lists = self._target_mask_path_lists[:self._num_samples]
     self._pointer = 0
     self._order = list(range(len(self._input_path_lists)))
+
+    # When the batch_size does not even divide the number of input paths,
+    # fill the last batch with randomly selected paths
+    num_others = self._batch_size - (len(self._order) % self._batch_size)
+    self._order += random.sample(self._order, num_others)
+
     self._shape = shape
     self._use_fake_target_masks = use_fake_target_masks
     if shuffle:
@@ -188,6 +194,7 @@ class SliceBatchGenerator(object):
       batch = Batch(*batch)
 
       yield batch
+
 
   def get_num_batches(self):
     """
