@@ -54,15 +54,17 @@ You can track the progress of training one of two ways:
 - `log.txt`:
 - TensorBoard:
 
-If you want to stop training and resume it at a later time, quit out of the command. Running the following command restores the weights from the latest checkpoint and reads the dataset split used in the previous training session from `experiments/0002/split.json` (but does not restore the values of the flags from `experiments/0002/flags.json`).
+If you want to stop training and resume it at a later time, quit out of the command. Running the following command restores the weights from the latest checkpoint and reads the dataset split used in the previous training session from `experiments/0002/split.json` (but does not restore the values of the flags from `experiments/0002/flags.json` and does not reset the global step).
 ```bash
 (py36) $ python main.py --experiment_name=0002
 ```
+
 To use the same flags as the previous training session, specify them explicitly as follows:
 ```bash
 (py36) $ python main.py --experiment_name=0002 --num_epochs=10 --eval_every=100 --save_every=100
 ```
 
+Checkpoints will be saved every `save_every` iterations, as well as the final iteration of each epoch.
 
 ## Helpful flags for sanity checking
 - `--use_fake_target_masks`: sets all target masks to entirely zeros, a label that all models should be able to learn. Here, I verify that model `ZeroATLASModel`, which predicts 0 for all masks, achieves a low loss.
@@ -85,3 +87,7 @@ To use the same flags as the previous training session, specify them explicitly 
   ```bash
   $ python main.py --experiment_name=quick_dev --dev_num_samples=1000
   ```
+
+# Miscellaneous information about the dataset
+- 76734 lesion mask slices.
+-

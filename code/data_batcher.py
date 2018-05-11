@@ -84,7 +84,7 @@ class SliceBatchGenerator(object):
     # When the batch_size does not even divide the number of input paths,
     # fill the last batch with randomly selected paths
     num_others = self._batch_size - (len(self._order) % self._batch_size)
-    self._order += random.sample(self._order, num_others)
+    self._order += random.choices(self._order, k=num_others)
 
     self._shape = shape
     self._use_fake_target_masks = use_fake_target_masks
@@ -200,4 +200,5 @@ class SliceBatchGenerator(object):
     """
     Returns the number of batches.
     """
-    return int(len(self._input_path_lists) / self._batch_size)
+    # The -1 then +1 accounts for the remainder batch.
+    return int((len(self._input_path_lists) - 1) / self._batch_size) + 1

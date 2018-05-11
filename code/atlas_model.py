@@ -463,7 +463,8 @@ class ATLASModel(object):
             f"param norm {param_norm}")
 
         # Sometimes saves model
-        if global_step % self.FLAGS.save_every == 0:
+        if (global_step % self.FLAGS.save_every == 0
+            or global_step == sbg.get_num_batches()):
           self.saver.save(sess, checkpoint_path, global_step=global_step)
 
         # Sometimes evaluates model on dev loss, train F1/EM and dev F1/EM
