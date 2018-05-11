@@ -272,7 +272,7 @@ def setup_train_dev_split(FLAGS):
     else:
       for slice_path in slice_paths:
         train_input_paths.append([slice_path])
-        dev_input_paths.append([slice_paths])
+        dev_input_paths.append([slice_path])
   elif FLAGS.split_type == "by_site":
     pass  # TODO
   else:
@@ -297,10 +297,12 @@ def setup_train_dev_split(FLAGS):
     }
     json.dump(split, fout)
 
+  logging.info(f"Split contains {len(train_input_paths)} training examples...")
+  logging.info(f"Split contains {len(dev_input_paths)} dev examples...")
+
   return (
     train_input_paths,
     train_target_mask_paths,
     dev_input_paths,
     dev_target_mask_paths,
   )
-
