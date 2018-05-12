@@ -38,6 +38,13 @@ tf.app.flags.DEFINE_integer("print_every", 1,
                             "How many iterations to do per print.")
 tf.app.flags.DEFINE_integer("save_every", 500,
                             "How many iterations to do per save.")
+tf.app.flags.DEFINE_integer("summary_every", 100,
+                            "How many iterations to do per TensorBoard "
+                            "summary write.")
+
+# TensorBoard
+tf.app.flags.DEFINE_integer("num_summary_images", 10,
+                            "How many images to write to summary.")
 
 # Data
 tf.app.flags.DEFINE_string("data_dir", DEFAULT_DATA_DIR,
