@@ -137,7 +137,7 @@ class SliceBatchGenerator(object):
         # opens input, resizes it, converts to a numpy array
         input = Image.open(input_path_list[0]).convert("L")
         input = input.resize(self._shape[::-1], Image.NEAREST)
-        input = np.asarray(input)
+        input = np.asarray(input) / 255.0
 
         # Assumes {target_mask_path_list} is a list of lists, where the outer
         # list has length 1 and the inner list has length >= 1;
