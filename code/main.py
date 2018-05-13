@@ -43,7 +43,7 @@ tf.app.flags.DEFINE_integer("summary_every", 100,
                             "summary write.")
 
 # TensorBoard
-tf.app.flags.DEFINE_integer("num_summary_images", 10,
+tf.app.flags.DEFINE_integer("num_summary_images", 64,
                             "How many images to write to summary.")
 
 # Data
