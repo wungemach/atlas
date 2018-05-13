@@ -127,7 +127,8 @@ class SliceBatchGenerator(object):
         input = Image.open(input_path_list[0]).convert("L")
         # Image.resize expects (width, height) order
         examples.append((
-          np.asarray(input.resize(self._shape[::-1], Image.NEAREST)),
+          # np.asarray(input.resize(self._shape[::-1], Image.NEAREST)),
+          np.asarray(input.crop((0, 0) + self._shape[::-1])),
           np.zeros(self._shape),
           input_path_list[0],
           "fake_target_mask"
@@ -136,7 +137,8 @@ class SliceBatchGenerator(object):
         # Assumes {input_path_list} is a list with length 1;
         # opens input, resizes it, converts to a numpy array
         input = Image.open(input_path_list[0]).convert("L")
-        input = input.resize(self._shape[::-1], Image.NEAREST)
+        # input = input.resize(self._shape[::-1], Image.NEAREST)
+        input = input.crop((0, 0) + self._shape[::-1])
         input = np.asarray(input) / 255.0
 
         # Assumes {target_mask_path_list} is a list of lists, where the outer
@@ -146,10 +148,13 @@ class SliceBatchGenerator(object):
           lambda target_mask_path: Image.open(target_mask_path).convert("L"),
           target_mask_path_list[0]))
         target_mask_list = list(map(
-          lambda target_mask: target_mask.resize(self._shape[::-1], Image.NEAREST),
+          # lambda target_mask: target_mask.resize(self._shape[::-1], Image.NEAREST),
+          lambda target_mask: target_mask.crop((0, 0) + self._shape[::-1]),
           target_mask_list))
+
         target_mask_list = list(map(
-          lambda target_mask: (np.asarray(target_mask.resize(self._shape[::-1], Image.NEAREST)) > 1e-8) + 0.0,
+          # lambda target_mask: (np.asarray(target_mask.resize(self._shape[::-1], Image.NEAREST)) > 1e-8) + 0.0,
+          lambda target_mask: (np.asarray(target_mask)) / 255.0,
           target_mask_list))
         target_mask = np.minimum(np.sum(target_mask_list, axis=0), 1.0)
 
