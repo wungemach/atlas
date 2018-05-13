@@ -51,8 +51,9 @@ Running the following command will start an experiment called `0002` training th
 (py36) $ python main.py --experiment_name=0002 --num_epochs=10 --eval_every=100 --save_every=100
 ```
 You can track the progress of training one of two ways:
-- `log.txt`:
-- TensorBoard:
+- `log.txt`: shows log information written about loss written during training.
+- TensorBoard: displays graphical information about loss scalars and images written during training. For example, the TensorBoard images tab shows triplets of MRI slices, target lesion masks, and predicted lesion masks (from left to right).
+  ![TensorBoard Triplets](/images/tensorboard_triplets.png)
 
 If you want to stop training and resume it at a later time, quit out of the command. Running the following command restores the weights from the latest checkpoint and reads the dataset split used in the previous training session from `experiments/0002/split.json` (resets the global step but does not restore the values of the flags from `experiments/0002/flags.json`).
 ```bash
