@@ -43,12 +43,12 @@ Running the following command will start an experiment called `0001` training th
 (py36) $ python main.py --experiment_name=0001 --model_name=ZeroATLASModel --num_epochs=1 --use_fake_target_masks
 ```
 
-This particular `ZeroATLASModel` predicts 0 for the entire mask no matter what (i.e. it never predicts the presence of a lesion), which performs well when using fake target masks, which manually sets all masks to 0. You can see it's stellar performance in `experiments/0001/log.txt`, where a loss of `0.0` should be printed every training iteration. It's helpful to use the `--use_fake_target_masks` test as a sanity check for new models that you implement.
+This particular `ZeroATLASModel` predicts 0 for the entire mask no matter what (i.e. it never predicts the presence of a lesion), which performs well when using fake target masks, which manually sets all masks to 0. You can see its stellar performance in `experiments/0001/log.txt`, where a loss close to `0.0` should be printed every training iteration. It's helpful to use the `--use_fake_target_masks` test as a sanity check for new models that you implement.
 
 ### Your first real experiment
-Running the following command will start an experiment called `0002` training the default encoder-decoder `ATLASModel` for 10 epochs. It will evaluate the performance of the model on the development set every 100 steps and save the model every 100 steps.
+Running the following command will start an experiment called `0002` training the default encoder-decoder `ATLASModel` for 10 epochs. It will evaluate the performance of the model on the development set every 100 steps, print logs every 1 step, save the model every 100 steps, and written summaries to TensorBoard every 10 steps.
 ```bash
-(py36) $ python main.py --experiment_name=0002 --num_epochs=10 --eval_every=100 --save_every=100
+(py36) $ python main.py --experiment_name=0002 --num_epochs=10 --eval_every=100 --print_every=1 --save_every=100 --summary_every=10
 ```
 You can track the progress of training one of two ways:
 - `log.txt`: shows log information written about loss written during training.
@@ -62,7 +62,7 @@ If you want to stop training and resume it at a later time, quit out of the comm
 
 To use the same flags as the previous training session, specify them explicitly as follows:
 ```bash
-(py36) $ python main.py --experiment_name=0002 --num_epochs=10 --eval_every=100 --save_every=100
+(py36) $ python main.py --experiment_name=0002 --num_epochs=10 --eval_every=100 --print_every=1 --save_every=100 --summary_every=10
 ```
 
 Checkpoints will be saved every `save_every` iterations, as well as the final iteration of each epoch.
@@ -76,6 +76,11 @@ Checkpoints will be saved every `save_every` iterations, as well as the final it
 - `--input_regex`: sets the regex to use for input paths. If set, `FLAGS.p` will be ignored and train and dev sets will use this same input regex. For small enough sets, all models should be able to overfit the target masks. Here, I verify that the baseline model can overfit to separate lesion masks for a single slice.
   ```bash
   $ python main.py --experiment_name=regex --input_regex=Site2/031844/t01/031844_t1w_deface_stx/image-slice102.jpg
+  ```
+
+  It might help to use this flag to experiment with the ability of a model to overfit the target masks as a function of the number of examples. Here, I verfiy that the baseline model can overfit to separate lesion masks for a several patients at the same site.
+  ```bash
+  $ python main.py --experiment_name=regex --input_regex=Site2/03184*/t01/03184*_t1w_deface_stx/*.jpg
   ```
 
 ## Helpful flags to toggle
