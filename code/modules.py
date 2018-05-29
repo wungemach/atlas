@@ -199,18 +199,18 @@ class NetNet(NeuralNetwork):
       drop4 = self.dropout(conv4, keep_prob=self.keep_prob, scope_name="drop4")
 
       pool2 = self.maxpool2d(conv4, pool_shape=[1, 4, 4, 1], strides=[1, 4, 4, 1], scope_name="pool2")  # (b, 15, 13, 128)
-      conv5 = self.conv2d_relu(pool2, filter_shape=[3, 3, 128, 256], scope_name="conv5")  # (b, 58, 49, 256)
+      conv5 = self.conv2d_relu(pool2, filter_shape=[3, 3, 128, 256], scope_name="conv5")  # (b, 15, 13, 256)
       drop5 = self.dropout(conv5, keep_prob=self.keep_prob, scope_name="drop5")
-      conv6 = self.conv2d_relu(drop5, filter_shape=[3, 3, 256, 256], scope_name="conv6")  # (b, 58, 49, 256)
+      conv6 = self.conv2d_relu(drop5, filter_shape=[3, 3, 256, 256], scope_name="conv6")  # (b, 15, 13, 256)
       drop6 = self.dropout(conv6, keep_prob=self.keep_prob, scope_name="drop6")
 
       # Deconv
-      up1 = self.upsample2(drop6, scope_name="up1", factor=[4, 4])  # (b, 116, 98, 256)
-      deconv1 = self.deconv2d(up1, filter_shape=[2, 2], num_outputs=128, scope_name="deconv1")  # (b, 116, 98, 128)
+      up1 = self.upsample2(drop6, scope_name="up1", factor=[4, 4])  # (b, 58, 49, 256)
+      deconv1 = self.deconv2d(up1, filter_shape=[2, 2], num_outputs=128, scope_name="deconv1")  # (b, 58, 49, 128)
       concat1 = tf.concat([drop4, deconv1], axis=3)  # (b, 116, 98, 256)
-      conv7 = self.conv2d_relu(concat1, filter_shape=[3, 3, 256, 128], scope_name="conv7")  # (b, 116, 98, 128)
+      conv7 = self.conv2d_relu(concat1, filter_shape=[3, 3, 256, 128], scope_name="conv7")  # (b, 58, 49, 128)
       drop7 = self.dropout(conv7, keep_prob=self.keep_prob, scope_name="drop7")
-      conv8 = self.conv2d_relu(drop7, filter_shape=[3, 3, 128, 128], scope_name="conv8")  # (b, 116, 98, 128)
+      conv8 = self.conv2d_relu(drop7, filter_shape=[3, 3, 128, 128], scope_name="conv8")  # (b, 58, 49, 128)
       drop8 = self.dropout(conv8, keep_prob=self.keep_prob, scope_name="drop8")
 
       up2 = self.upsample(drop8, scope_name="up2", factor=[4, 4])  # (b, 232, 196, 128)
@@ -258,26 +258,26 @@ class NetNetExtraConv(NeuralNetwork):
       new_drop1 = self.dropout(new_conv1, keep_prob=self.keep_prob, scope_name="new_drop1")
 
       pool2 = self.maxpool2d(new_conv1, pool_shape=[1, 4, 4, 1], strides=[1, 4, 4, 1], scope_name="pool2")  # (b, 15, 13, 128)
-      conv5 = self.conv2d_relu(pool2, filter_shape=[3, 3, 128, 256], scope_name="conv5")  # (b, 58, 49, 256)
+      conv5 = self.conv2d_relu(pool2, filter_shape=[3, 3, 128, 256], scope_name="conv5")  # (b, 15, 13, 256)
       drop5 = self.dropout(conv5, keep_prob=self.keep_prob, scope_name="drop5")
-      conv6 = self.conv2d_relu(drop5, filter_shape=[3, 3, 256, 256], scope_name="conv6")  # (b, 58, 49, 256)
+      conv6 = self.conv2d_relu(drop5, filter_shape=[3, 3, 256, 256], scope_name="conv6")  # (b, 15, 13, 256)
       drop6 = self.dropout(conv6, keep_prob=self.keep_prob, scope_name="drop6")
 
       # Added convolution
-      new_conv2 = self.conv2d_relu(drop6, filter_shape=[3, 3, 256, 256], scope_name="new_conv2")  # (b, 58, 49, 256)
+      new_conv2 = self.conv2d_relu(drop6, filter_shape=[3, 3, 256, 256], scope_name="new_conv2")  # (b, 15, 13, 256)
       new_drop2 = self.dropout(new_conv2, keep_prob=self.keep_prob, scope_name="new_drop2")
 
       # Deconv
-      up1 = self.upsample2(new_drop2, scope_name="up1", factor=[4, 4])  # (b, 116, 98, 256)
-      deconv1 = self.deconv2d(up1, filter_shape=[2, 2], num_outputs=128, scope_name="deconv1")  # (b, 116, 98, 128)
+      up1 = self.upsample2(new_drop2, scope_name="up1", factor=[4, 4])  # (b, 58, 49, 128)
+      deconv1 = self.deconv2d(up1, filter_shape=[2, 2], num_outputs=128, scope_name="deconv1")  # (b, 58, 49, 256)
       concat1 = tf.concat([drop4, deconv1], axis=3)  # (b, 116, 98, 256)
-      conv7 = self.conv2d_relu(concat1, filter_shape=[3, 3, 256, 128], scope_name="conv7")  # (b, 116, 98, 128)
+      conv7 = self.conv2d_relu(concat1, filter_shape=[3, 3, 256, 128], scope_name="conv7")  # (b, 58, 49, 128)
       drop7 = self.dropout(conv7, keep_prob=self.keep_prob, scope_name="drop7")
-      conv8 = self.conv2d_relu(drop7, filter_shape=[3, 3, 128, 128], scope_name="conv8")  # (b, 116, 98, 128)
+      conv8 = self.conv2d_relu(drop7, filter_shape=[3, 3, 128, 128], scope_name="conv8")  # (b, 58, 49, 128)
       drop8 = self.dropout(conv8, keep_prob=self.keep_prob, scope_name="drop8")
 
       # Added convolution
-      new_conv3 = self.conv2d_relu(drop8, filter_shape=[3, 3, 128, 128], scope_name="new_conv3")  # (b, 116, 98, 128)
+      new_conv3 = self.conv2d_relu(drop8, filter_shape=[3, 3, 128, 128], scope_name="new_conv3")  # (b, 58, 49, 128)
       new_drop3 = self.dropout(new_conv3, keep_prob=self.keep_prob, scope_name="new_drop3")
 
       up2 = self.upsample(new_drop3, scope_name="up2", factor=[4, 4])  # (b, 232, 196, 128)
