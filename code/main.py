@@ -185,7 +185,7 @@ def main(_):
       json.dump(flags, fout)
 
     with tf.Session(config=config) as sess:
-      # Loads the most recent model
+      # Loads the most recent model, or initializes a new one
       initialize_model(sess, atlas_model, FLAGS.train_dir, expect_exists=False)
 
       # Trains the model
