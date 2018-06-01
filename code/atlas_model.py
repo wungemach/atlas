@@ -737,7 +737,7 @@ class DualNetMultiWindowATLASModel(ATLASModel):
 
   def build_graph(self):
     assert(self.input_dims == self.inputs_op.get_shape().as_list()[1:])
-    dualnet = DualNetMultiWindow(input_shape=self.input_dims,
+    dualnet = DualNetMultiWindow50(input_shape=self.input_dims,
                 keep_prob=self.keep_prob,
                 output_shape=self.input_dims,
                 scope_name="DualNetMultiWindow")
