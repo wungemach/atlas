@@ -370,7 +370,7 @@ class DualNet(NeuralNetwork):
       # ----- Top path -----
 
       # Take a crop out of the middle of the input
-      green_box = tf.slice(input, [0, 113, 93, 0], [-1, 50, 50, -1], name="crop1") # (b, 50, 50, 1)
+      green_box = tf.slice(input, [0, 103, 93, 0], [-1, 50, 50, -1], name="crop1") # (b, 50, 50, 1)
 
       # Initial convolutions
       conv1_top = self.conv2d_relu(green_box, filter_shape=[3, 3, 1, 30], scope_name="conv1_top", padding="VALID")  # (b, 48, 48, 30)
@@ -434,9 +434,7 @@ class DualNet(NeuralNetwork):
 
 
       # Pad the final output so that it is the same shape as the input
-      pad2 = tf.pad(conv_1D_3, tf.constant([[0,0], [110, 86], [100, 60], [0,0]])) # (b, 232, 196, 1)
+      pad2 = tf.pad(conv_1D_3, tf.constant([[0,0], [100, 96], [100, 60], [0,0]])) # (b, 232, 196, 1)
       out = tf.identity(pad2, name="out")
-
-      print(out.shape)
-
+      
     return out
