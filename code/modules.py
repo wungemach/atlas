@@ -565,7 +565,7 @@ class DualNetMultiWindow50(NeuralNetwork):
 
       # A list of values to use to offset the green_box from the top left of the image,
       # given as a list of (vertical, horizonal) pairs
-      offsets = [(25, 25), (25, 75), (25, 125), (75, 25), (75, 75), (75, 125), (125, 25), (125, 175), (125, 125), (175, 25), (175, 50), (175, 75)]
+      offsets = [(25, 25), (25, 75), (25, 125), (75, 25), (75, 75), (75, 125), (125, 25), (125, 75), (125, 125), (175, 25), (175, 75), (175, 125)]
       offset_outputs = []
 
       #print('offset coordinates are', offsets[0] + (116,98), offsets[1] + (116, 98))
@@ -600,7 +600,7 @@ class DualNetMultiWindow50(NeuralNetwork):
         pool1_lower = self.maxpool2d(blue_box, scope_name='pool1_lower') # (b, 25, 25, 1)
 
         # Convolutions
-        conv1_lower = self.conv2d_relu(pool2_lower, filter_shape=[3, 3, 1, 40], scope_name="conv1")  # (b, 25, 25, 40) ALL SAME SIZE
+        conv1_lower = self.conv2d_relu(pool1_lower, filter_shape=[3, 3, 1, 40], scope_name="conv1")  # (b, 25, 25, 40) ALL SAME SIZE
         drop1_lower = self.dropout(conv1_lower, keep_prob=self.keep_prob, scope_name="drop1")
         conv2_lower = self.conv2d_relu(drop1_lower, filter_shape=[3, 3, 40, 50], scope_name="conv2")  # (b, 25, 25, 50)
         drop2_lower = self.dropout(conv2_lower, keep_prob=self.keep_prob, scope_name="drop2")

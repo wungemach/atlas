@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 import utils
 from data_batcher import SliceBatchGenerator
-from modules import ConvEncoder, DeconvDecoder, UNet, NetNet, NetNetExtraConv, UNetNoConcat, DualNet, DualNet50, DualNetMultiWindow
+from modules import ConvEncoder, DeconvDecoder, UNet, NetNet, NetNetExtraConv, UNetNoConcat, DualNet, DualNet50, DualNetMultiWindow50
 
 
 class ATLASModel(object):
