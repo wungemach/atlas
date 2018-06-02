@@ -578,49 +578,36 @@ class DualNetMultiWindow50(NeuralNetwork):
         green_box = tf.slice(padded_input, [0, offset[0], offset[1], 0], [-1, 50, 50, -1], name="crop1") # (b, 50, 50, 1)
 
         # Initial convolutions
-        conv1_top = self.conv2d_relu(green_box, filter_shape=[3, 3, 1, 30], scope_name="conv1_top")  # (b, 50, 50, 30) ALL ARE SAME SIZE
-        drop1_top = self.dropout(conv1_top, keep_prob=self.keep_prob, scope_name="drop1_top")
-        conv2_top = self.conv2d_relu(drop1_top, filter_shape=[3, 3, 30, 30], scope_name="conv2_top")  # (b, 50, 50, 30)
-        drop2_top = self.dropout(conv2_top, keep_prob=self.keep_prob, scope_name="drop2_top")
-        conv3_top = self.conv2d_relu(drop2_top, filter_shape=[3, 3, 30, 40], scope_name="conv3_top")  # (b, 50, 50, 40)
-        drop3_top = self.dropout(conv3_top, keep_prob=self.keep_prob, scope_name="drop3_top")
-        conv4_top = self.conv2d_relu(drop3_top, filter_shape=[3, 3, 40, 40], scope_name="conv4_top")  # (b, 50, 50, 40)
-        drop4_top = self.dropout(conv4_top, keep_prob=self.keep_prob, scope_name="drop4_top")
-        conv5_top = self.conv2d_relu(drop4_top, filter_shape=[3, 3, 40, 50], scope_name="conv5_top")  # (b, 50, 50, 50)
-        drop5_top = self.dropout(conv5_top, keep_prob=self.keep_prob, scope_name="drop5_top")
-        conv6_top = self.conv2d_relu(drop5_top, filter_shape=[3, 3, 50, 50], scope_name="conv6_top")  # (b, 50, 50, 50)
-        drop6_top = self.dropout(conv6_top, keep_prob=self.keep_prob, scope_name="drop6_top")
-        conv7_top = self.conv2d_relu(drop6_top, filter_shape=[3, 3, 50, 60], scope_name="conv7_top")  # (b, 50, 50, 60)
-        drop7_top = self.dropout(conv7_top, keep_prob=self.keep_prob, scope_name="drop7_top")
+        conv1_top = self.conv2d_relu(green_box, filter_shape=[3, 3, 1, 60], scope_name="conv1_top")  # (b, 50, 50, 30) ALL ARE SAME SIZE
+        conv2_top = self.conv2d_relu(conv1_top, filter_shape=[3, 3, 60, 60], scope_name="conv2_top")  # (b, 50, 50, 30)
+        conv3_top = self.conv2d_relu(conv2_top, filter_shape=[3, 3, 60, 80], scope_name="conv3_top")  # (b, 50, 50, 40)
+        conv4_top = self.conv2d_relu(conv3_top, filter_shape=[3, 3, 80, 80], scope_name="conv4_top")  # (b, 50, 50, 40)
+        conv5_top = self.conv2d_relu(conv4_top, filter_shape=[3, 3, 80, 100], scope_name="conv5_top")  # (b, 50, 50, 50)
+        conv6_top = self.conv2d_relu(conv5_top, filter_shape=[3, 3, 100, 100], scope_name="conv6_top")  # (b, 50, 50, 50)
+        conv7_top = self.conv2d_relu(conv6_top, filter_shape=[3, 3, 100, 120], scope_name="conv7_top")  # (b, 50, 50, 60)
 
         # ----- Bottom path ------
         # Crop the input, aggresively pool, then pad to a convenient size
         cropped_input = tf.slice(padded_input, [0, offset[0]-25, offset[1]-25, 0], [-1, 100, 100, -1]) # (b, 100, 100, 1)
-        blue_box = self.maxpool2d(cropped_input, scope_name='blue_pool') # (b, 50, 50, 1)
+        pool1_lower = self.maxpool2d(cropped_input, scope_name='pool1_lower') # (b, 50, 50, 1)
+        conv1_lower = self.conv2d_relu(pool1_lower, filter_shape=[3, 3, 1, 80], scope_name="conv1")  # (b, 25, 25, 40) ALL SAME SIZE
         pool1_lower = self.maxpool2d(blue_box, scope_name='pool1_lower') # (b, 25, 25, 1)
 
         # Convolutions
-        conv1_lower = self.conv2d_relu(pool1_lower, filter_shape=[3, 3, 1, 40], scope_name="conv1")  # (b, 25, 25, 40) ALL SAME SIZE
-        drop1_lower = self.dropout(conv1_lower, keep_prob=self.keep_prob, scope_name="drop1")
-        conv2_lower = self.conv2d_relu(drop1_lower, filter_shape=[3, 3, 40, 50], scope_name="conv2")  # (b, 25, 25, 50)
-        drop2_lower = self.dropout(conv2_lower, keep_prob=self.keep_prob, scope_name="drop2")
-        conv3_lower = self.conv2d_relu(drop2_lower, filter_shape=[3, 3, 50, 60], scope_name="conv3")  # (b, 25, 25, 60)
-        drop3_lower = self.dropout(conv3_lower, keep_prob=self.keep_prob, scope_name="drop3")
+        conv2_lower = self.conv2d_relu(conv1_lower, filter_shape=[3, 3, 80, 100], scope_name="conv2")  # (b, 25, 25, 50)
+        conv3_lower = self.conv2d_relu(conv2_lower, filter_shape=[3, 3, 100, 120], scope_name="conv3")  # (b, 25, 25, 60)
+        conv4_lower = self.conv2d_relu(conv3_lower, filter_shape=[3, 3, 120, 120], scope_name="conv4")  # (b, 25, 25, 60)
+        conv5_lower = self.conv2d_relu(conv4_lower, filter_shape=[3, 3, 120, 120], scope_name="conv5")  # (b, 25, 25, 60)
 
-        
-        conv4_lower = self.conv2d_relu(drop3_lower, filter_shape=[3, 3, 60, 60], scope_name="conv4", padding="SAME")  # (b, 25, 25, 60)
-        drop4_lower = self.dropout(conv4_lower, keep_prob=self.keep_prob, scope_name="drop4")
-        conv5_lower = self.conv2d_relu(drop4_lower, filter_shape=[3, 3, 60, 60], scope_name="conv5", padding="SAME")  # (b, 25, 25, 60)
-        drop5_lower = self.dropout(conv5_lower, keep_prob=self.keep_prob, scope_name="drop5")
-
-        up1 = self.upsample(drop5_lower, scope_name="up1", factor=[2, 2])  # (b, 50, 50, 60)
-        deconv1 = self.deconv2d(up1, filter_shape=[2, 2], num_outputs=60, scope_name="deconv1")  # (b, 50, 50, 60)
+        up1 = self.upsample(conv5_lower, scope_name="up1", factor=[2, 2])  # (b, 50, 50, 60)
+        deconv1 = self.deconv2d(up1, filter_shape=[2, 2], num_outputs=120, scope_name="deconv1")  # (b, 50, 50, 60)
+        deconv2 = self.deconv2d(deconv1, filter_shape=[2, 2], num_outputs=120, scope_name="deconv2")  # (b, 50, 50, 60)
 
         # ----- Fully connected layers ------
-        concat1 = tf.concat([drop7_top, deconv1], axis=3)
-        conv_1D_1 = self.conv2d(concat1, filter_shape=[1, 1, 120, 120], scope_name="conv1D_1")  # (b, 50, 50, 120)
-        conv_1D_2 = self.conv2d(conv_1D_1, filter_shape=[1, 1, 120, 120], scope_name="conv1D_2")  # (b, 50, 50, 120)
-        conv_1D_3 = self.conv2d(conv_1D_2, filter_shape=[1, 1, 120, 1], scope_name="conv1D_3")  # (b, 50, 50, 1)
+        concat1 = tf.concat([conv7_top, deconv1], axis=3)
+        conv_1D_1 = self.conv2d(concat1, filter_shape=[1, 1, 240, 240], scope_name="conv1D_1")  # (b, 50, 50, 120)
+        conv_1D_2 = self.conv2d(conv_1D_1, filter_shape=[1, 1, 240, 240], scope_name="conv1D_2")  # (b, 50, 50, 120)
+        conv_1D_3 = self.conv2d(conv_1D_2, filter_shape=[1, 1, 240, 1], scope_name="conv1D_3")  # (b, 50, 50, 1)
 
         # Pad the final output so that it is the same shape as the input
         padded_output = tf.pad(conv_1D_3, tf.constant([[0,0], [offset[0] - 8, 190 - offset[0]], [offset[1] - 2, 148 - offset[1]], [0,0]])) # (b, 232, 196, 1)
