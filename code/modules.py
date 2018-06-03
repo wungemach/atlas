@@ -703,3 +703,168 @@ class DualNetFC(NeuralNetwork):
       out = tf.identity(tf.reduce_sum(offset_outputs, axis=0), name="out")
       
     return out
+
+
+class DualNetFC2(NeuralNetwork):
+  def __init__(self, input_shape, keep_prob, output_shape, scope_name="unet"):
+    self.input_shape = input_shape
+    self.keep_prob = keep_prob
+    self.output_shape = output_shape
+    self.scope_name = scope_name
+
+  def build_graph(self, input):
+    '''
+      - Implement the dual pathway architecture with green_box centered ~100x100, blue_box entire image
+      - Spacial dims when you concatenate should be ~50x50 or maybe ~25x25
+      - Deconv only on blue_path to get to correct dimensions before concatenating
+      - End with 1x1 convolutions for fulling connected layer
+      - Run on a couple images with lesions within the green_box
+    '''
+
+    with tf.variable_scope(self.scope_name, reuse=tf.AUTO_REUSE):
+
+      padded_input = tf.pad(input, tf.constant([[0,0], [9,9], [2,2], [0,0]])) #(b, 250, 200, 1)
+
+      # A list of values to use to offset the green_box from the top left of the image,
+      # given as a list of (vertical, horizonal) pairs
+      offsets = [(25, 25), (25, 75), (25, 125), (75, 25), (75, 75), (75, 125), (125, 25), (125, 75), (125, 125), (175, 25), (175, 75), (175, 125)]
+      offset_outputs = []
+
+      # ----- Bottom path ------
+      # Crop the input, aggresively pool, then pad to a convenient size
+      cropped_input = tf.slice(input, [0, 18, 0, 0], [-1, 196, -1, -1]) # (b, 196, 196, 1)
+      pool1_lower = self.maxpool2d(cropped_input, scope_name='pool1_lower') # (b, 98, 98, 1)
+      conv1_lower = self.conv2d_relu(pool1_lower, filter_shape=[3, 3, 1, 20], scope_name="conv1_lower")
+
+      pool2_lower = self.maxpool2d(conv1_lower, scope_name='pool2_lower') # (b, 49, 49, 1)
+      pool2_lower_pad = tf.pad(pool2_lower, tf.constant([[0,0], [1,0], [1,0], [0,0]])) # (b, 50, 50, 20)
+      conv2_lower = self.conv2d_relu(pool2_lower, filter_shape=[3, 3, 20, 30], scope_name="conv2_lower") # (b, 50, 50, 30)
+      pool3_lower = self.maxpool2d(conv2_lower, scope_name='pool3_lower') # (b, 25, 25, 30)
+
+      reshape1 = tf.reshape(pool3_lower, shape=[-1, 25*25*30])  # (18750)
+      fc1 = self.fc(reshape1, output_shape=1024, scope_name="fc1_lower")        
+      fc2 = self.fc(fc1, output_shape=256, scope_name="fc2_lower")
+
+      # Fully connected layers
+      fc3 = self.fc(fc2, output_shape=1024, scope_name="fc3_lower")        
+      fc4 = self.fc(fc3, output_shape=25*25*30, scope_name="fc4_lower")
+      
+      reshape2 = tf.reshape(fc4, shape=[-1, 25, 25, 30])
+      up1 = self.upsample(reshape2, scope_name="up1", factor=[2, 2])  # (b, 50, 50, 30)
+      deconv1 = self.deconv2d(up1, filter_shape=[2, 2], num_outputs=40, scope_name="deconv1")  # (b, 50, 50, 40)
+      deconv2 = self.deconv2d(deconv1, filter_shape=[2, 2], num_outputs=60, scope_name="deconv2")  # (b, 50, 50, 60)
+
+
+      for offset in offsets:
+
+        # ----- Top path -----
+        # Take a crop out of the input, as specified by the offset
+
+        green_box = tf.slice(padded_input, [0, offset[0], offset[1], 0], [-1, 50, 50, -1], name="crop1") # (b, 50, 50, 1)
+
+        # Initial convolutions
+        conv1_top = self.conv2d_relu(green_box, filter_shape=[3, 3, 1, 20], scope_name="conv1_top")  # (b, 50, 50, 30) ALL ARE SAME SIZE
+        conv2_top = self.conv2d_relu(conv1_top, filter_shape=[3, 3, 20, 20], scope_name="conv2_top")  # (b, 50, 50, 30)
+        conv3_top = self.conv2d_relu(conv2_top, filter_shape=[3, 3, 20, 30], scope_name="conv3_top")  # (b, 50, 50, 40)
+        conv4_top = self.conv2d_relu(conv3_top, filter_shape=[3, 3, 30, 40], scope_name="conv4_top")  # (b, 50, 50, 40)
+        conv5_top = self.conv2d_relu(conv4_top, filter_shape=[3, 3, 40, 50], scope_name="conv5_top")  # (b, 50, 50, 50)
+        conv6_top = self.conv2d_relu(conv5_top, filter_shape=[3, 3, 50, 50], scope_name="conv6_top")  # (b, 50, 50, 50)
+        conv7_top = self.conv2d_relu(conv6_top, filter_shape=[3, 3, 50, 60], scope_name="conv7_top")  # (b, 50, 50, 60)
+
+        # ----- Fully connected layers ------
+        concat1 = tf.concat([conv7_top, deconv2], axis=3)
+        conv_1D_1 = self.conv2d(concat1, filter_shape=[1, 1, 120, 60], scope_name="conv1D_1")  # (b, 50, 50, 120)
+        conv_1D_2 = self.conv2d(conv_1D_1, filter_shape=[1, 1, 60, 60], scope_name="conv1D_2")  # (b, 50, 50, 120) 
+        conv_1D_3 = self.conv2d(conv_1D_2, filter_shape=[1, 1, 60, 1], scope_name="conv1D_3")  # (b, 50, 50, 1)
+
+
+        # Pad the final output so that it is the same shape as the input
+        padded_output = tf.pad(conv_1D_3, tf.constant([[0,0], [offset[0] - 8, 190 - offset[0]], [offset[1] - 2, 148 - offset[1]], [0,0]])) # (b, 232, 196, 1)
+        offset_outputs.append(padded_output)
+
+      out = tf.identity(tf.reduce_sum(offset_outputs, axis=0), name="out")
+      
+    return out
+
+class DualNetVeryFC(NeuralNetwork):
+  def __init__(self, input_shape, keep_prob, output_shape, scope_name="unet"):
+    self.input_shape = input_shape
+    self.keep_prob = keep_prob
+    self.output_shape = output_shape
+    self.scope_name = scope_name
+
+  def build_graph(self, input):
+    '''
+      - Implement the dual pathway architecture with green_box centered ~100x100, blue_box entire image
+      - Spacial dims when you concatenate should be ~50x50 or maybe ~25x25
+      - Deconv only on blue_path to get to correct dimensions before concatenating
+      - End with 1x1 convolutions for fulling connected layer
+      - Run on a couple images with lesions within the green_box
+    '''
+
+    with tf.variable_scope(self.scope_name, reuse=tf.AUTO_REUSE):
+
+      padded_input = tf.pad(input, tf.constant([[0,0], [9,9], [2,2], [0,0]])) #(b, 250, 200, 1)
+
+      # A list of values to use to offset the green_box from the top left of the image,
+      # given as a list of (vertical, horizonal) pairs
+      offsets = [(25, 25), (25, 75), (25, 125), (75, 25), (75, 75), (75, 125), (125, 25), (125, 75), (125, 125), (175, 25), (175, 75), (175, 125)]
+      offset_outputs = []
+
+      #print('offset coordinates are', offsets[0] + (116,98), offsets[1] + (116, 98))
+
+      for offset in offsets:
+
+        # ----- Top path -----
+        # Take a crop out of the input, as specified by the offset
+
+        green_box = tf.slice(padded_input, [0, offset[0], offset[1], 0], [-1, 50, 50, -1], name="crop1") # (b, 50, 50, 1)
+
+        # Initial convolutions
+        conv1_top = self.conv2d_relu(green_box, filter_shape=[3, 3, 1, 20], scope_name="conv1_top")  # (b, 50, 50, 30) ALL ARE SAME SIZE
+
+        reshape1_top = tf.reshape(conv1_top, shape=[-1, 50*50*20])
+
+        fc1_top = self.fc(reshape1_top, output_shape=1024, scope_name='fc1_top')
+        fc2_top = self.fc(fc1_top, output_shape=256, scope_name='fc2_top')
+        fc3_top = self.fc(fc2_top, output_shape=1024, scope_name='fc3_top')
+        fc4_top = self.fc(fc3_top, output_shape=50*50*20, scope_name='fc4_top')
+
+        reshape2_top = tf.reshape(fc4_top, shape=[-1, 50, 50, 20])
+
+        conv5_top = self.conv2d_relu(reshape2_top, filter_shape=[3, 3, 20, 60], scope_name="conv5_top")  # (b, 50, 50, 50)
+       
+
+        # ----- Bottom path ------
+        # Crop the input, aggresively pool, then pad to a convenient size
+        cropped_input = tf.slice(padded_input, [0, offset[0]-25, offset[1]-25, 0], [-1, 100, 100, -1]) # (b, 100, 100, 1)
+        pool1_lower = self.maxpool2d(cropped_input, scope_name='pool1_lower') # (b, 50, 50, 1)
+        conv1_lower = self.conv2d_relu(pool1_lower, filter_shape=[3, 3, 1, 20], scope_name="conv1")  # (b, 25, 25, 40) ALL SAME SIZE
+        pool2_lower = self.maxpool2d(conv1_lower, scope_name='pool2_lower') # (b, 25, 25, 20)
+        conv2_lower = self.conv2d_relu(pool2_lower, filter_shape=[3, 3, 20, 30], scope_name="conv2")  # (b, 25, 25, 50)
+
+        reshape1 = tf.reshape(conv2_lower, shape=[-1, 25*25*30])  # (18750)
+        fc1 = self.fc(reshape1, output_shape=1024, scope_name="fc1")        
+        fc2 = self.fc(fc1, output_shape=256, scope_name="fc2")
+        fc3 = self.fc(fc2, output_shape=1024, scope_name="fc3")        
+        fc4 = self.fc(fc3, output_shape=25*25*30, scope_name="fc4")
+        reshape2 = tf.reshape(fc4, shape=[-1, 25, 25, 30])
+
+        up1 = self.upsample(reshape2, scope_name="up1", factor=[2, 2])  # (b, 50, 50, 30)
+        deconv1 = self.deconv2d(up1, filter_shape=[2, 2], num_outputs=60, scope_name="deconv1")  # (b, 50, 50, 40)
+       
+
+        # ----- Fully connected layers ------
+        concat1 = tf.concat([conv5_top, deconv1], axis=3)
+        conv_1D_1 = self.conv2d(concat1, filter_shape=[1, 1, 120, 60], scope_name="conv1D_1")  # (b, 50, 50, 120)
+        conv_1D_2 = self.conv2d(conv_1D_1, filter_shape=[1, 1, 60, 60], scope_name="conv1D_2")  # (b, 50, 50, 120)
+        conv_1D_3 = self.conv2d(conv_1D_2, filter_shape=[1, 1, 60, 1], scope_name="conv1D_3")  # (b, 50, 50, 1)
+
+        # Pad the final output so that it is the same shape as the input
+        padded_output = tf.pad(conv_1D_3, tf.constant([[0,0], [offset[0] - 8, 190 - offset[0]], [offset[1] - 2, 148 - offset[1]], [0,0]])) # (b, 232, 196, 1)
+        offset_outputs.append(padded_output)
+
+      out = tf.identity(tf.reduce_sum(offset_outputs, axis=0), name="out")
+      
+    return out
+

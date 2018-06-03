@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 import utils
 from data_batcher import SliceBatchGenerator
-from modules import ConvEncoder, DeconvDecoder, UNet, NetNet, NetNetExtraConv, UNetNoConcat, DualNet, DualNet50, DualNetMultiWindow50, DualNetFC
+from modules import ConvEncoder, DeconvDecoder, UNet, DualNetVeryFC, DualNetFC2, NetNet, NetNetExtraConv, UNetNoConcat, DualNet, DualNet50, DualNetMultiWindow50, DualNetFC
 
 
 class ATLASModel(object):
@@ -141,7 +141,7 @@ class ATLASModel(object):
       weighted_ce_with_logits = tf.nn.weighted_cross_entropy_with_logits
       loss = weighted_ce_with_logits(logits=self.logits_op,
                                      targets=self.target_masks_op,
-                                     pos_weight=25.0,
+                                     pos_weight=1.0,
                                      name="ce")
 
       self.loss = tf.reduce_mean(loss)  # scalar mean across batch
@@ -767,6 +767,58 @@ class DualNetFCATLASModel(ATLASModel):
                 keep_prob=self.keep_prob,
                 output_shape=self.input_dims,
                 scope_name="DualNetFC")
+    self.logits_op = tf.squeeze(
+      dualnet.build_graph(tf.expand_dims(self.inputs_op, 3)), axis=3)
+
+    self.predicted_mask_probs_op = tf.sigmoid(self.logits_op,
+                                              name="predicted_mask_probs")
+    self.predicted_masks_op = tf.cast(self.predicted_mask_probs_op > 0.5,
+                                      tf.uint8,
+                                      name="predicted_masks")
+
+class DualNetFC2ATLASModel(ATLASModel):
+  def __init__(self, FLAGS):
+    """
+    Initializes the U-Net ATLAS model, which predicts 0 for the entire mask
+    no matter what, which performs well when --use_fake_target_masks.
+
+    Inputs:
+    - FLAGS: A _FlagValuesWrapper object passed in from main.py.
+    """
+    super().__init__(FLAGS)
+
+  def build_graph(self):
+    assert(self.input_dims == self.inputs_op.get_shape().as_list()[1:])
+    dualnet = DualNetFC2(input_shape=self.input_dims,
+                keep_prob=self.keep_prob,
+                output_shape=self.input_dims,
+                scope_name="DualNetFC2")
+    self.logits_op = tf.squeeze(
+      dualnet.build_graph(tf.expand_dims(self.inputs_op, 3)), axis=3)
+
+    self.predicted_mask_probs_op = tf.sigmoid(self.logits_op,
+                                              name="predicted_mask_probs")
+    self.predicted_masks_op = tf.cast(self.predicted_mask_probs_op > 0.5,
+                                      tf.uint8,
+                                      name="predicted_masks")
+
+class DualNetVeryFCATLASModel(ATLASModel):
+  def __init__(self, FLAGS):
+    """
+    Initializes the U-Net ATLAS model, which predicts 0 for the entire mask
+    no matter what, which performs well when --use_fake_target_masks.
+
+    Inputs:
+    - FLAGS: A _FlagValuesWrapper object passed in from main.py.
+    """
+    super().__init__(FLAGS)
+
+  def build_graph(self):
+    assert(self.input_dims == self.inputs_op.get_shape().as_list()[1:])
+    dualnet = DualNetVeryFC(input_shape=self.input_dims,
+                keep_prob=self.keep_prob,
+                output_shape=self.input_dims,
+                scope_name="DualNetVeryFC")
     self.logits_op = tf.squeeze(
       dualnet.build_graph(tf.expand_dims(self.inputs_op, 3)), axis=3)
 
