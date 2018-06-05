@@ -4,6 +4,7 @@ import os
 import sys
 import tensorflow as tf
 
+
 from split import setup_train_dev_split
 
 # Relative path of the main directory
@@ -208,6 +209,23 @@ def main(_):
                                                         num_samples=1000,
                                                         plot=True)
       logging.info(f"dev dice_coefficient: {dev_dice}")
+  elif FLAGS.mode == "print":
+    with tf.Session(config=config) as sess:
+      # Sets logging configuration
+      logging.basicConfig(level=logging.INFO)
+
+      # Loads the most recent model
+      initialize_model(sess, atlas_model, FLAGS.train_dir, expect_exists=True)
+      trained_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
+      
+      for var in trained_vars:
+        if 'W' in var.name:
+          size=1
+          for i in range(len(var.shape)):
+            size = size*int(var.shape[i])
+          print("-- Name:", var.name, "-- Value:", 1/size*tf.reduce_sum(var).eval())
+
+
 
 
 if __name__ == "__main__":

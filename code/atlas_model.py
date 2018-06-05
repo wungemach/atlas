@@ -141,7 +141,7 @@ class ATLASModel(object):
       weighted_ce_with_logits = tf.nn.weighted_cross_entropy_with_logits
       loss = weighted_ce_with_logits(logits=self.logits_op,
                                      targets=self.target_masks_op,
-                                     pos_weight=25.0,
+                                     pos_weight=5.0,
                                      name="ce")
 
       self.loss = tf.reduce_mean(loss)  # scalar mean across batch

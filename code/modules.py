@@ -478,11 +478,11 @@ class DualNetFC(NeuralNetwork):
 
         # Fully connected layers
         reshape1 = tf.reshape(conv2_lower, shape=[-1, 25*25*30])  # (b, 18750)
-        fc1 = self.fc(reshape1, output_shape=1024, scope_name="fc1") # (b, 1024)
+        fc1 = self.fc(reshape1, output_shape=512, scope_name="fc1") # (b, 1024)
         drop_fc1 = self.dropout(fc1, keep_prob=self.keep_prob, scope_name="drop_fc1")
-        fc2 = self.fc(drop_fc1, output_shape=256, scope_name="fc2") # (b, 256)
+        fc2 = self.fc(drop_fc1, output_shape=128, scope_name="fc2") # (b, 256)
         drop_fc2 = self.dropout(fc2, keep_prob=self.keep_prob, scope_name="drop_fc2")
-        fc3 = self.fc(drop_fc2, output_shape=1024, scope_name="fc3") # (b, 1024)
+        fc3 = self.fc(drop_fc2, output_shape=512, scope_name="fc3") # (b, 1024)
         drop_fc3 = self.dropout(fc3, keep_prob=self.keep_prob, scope_name="drop_fc3")
         fc4 = self.fc(drop_fc3, output_shape=25*25*30, scope_name="fc4") # (b, 1875)
         reshape2 = tf.reshape(fc4, shape=[-1, 25, 25, 30])
