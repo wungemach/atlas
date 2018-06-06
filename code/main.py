@@ -217,13 +217,17 @@ def main(_):
       # Loads the most recent model
       initialize_model(sess, atlas_model, FLAGS.train_dir, expect_exists=True)
       trained_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
+      var_count=0
       
       for var in trained_vars:
+        size=1
+        for i in range(len(var.shape)):
+          size = size*int(var.shape[i])
+        var_count += size
         if 'W' in var.name:
-          size=1
-          for i in range(len(var.shape)):
-            size = size*int(var.shape[i])
           print("-- Name:", var.name, "-- Value:", 1/size*tf.reduce_sum(var).eval())
+
+      print("Total trainable params =", var_count)
 
 
 
