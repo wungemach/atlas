@@ -369,6 +369,10 @@ class ATLASModel(object):
     dice_coefficient_total = 0.
     num_examples = 0
 
+    # To be used to save mask sizes for comparison
+    predicted_mask_sizes = []
+    target_mask_sizes = []
+
     sbg = SliceBatchGenerator(input_paths,
                               target_mask_paths,
                               self.FLAGS.batch_size,
@@ -396,6 +400,10 @@ class ATLASModel(object):
             logging.info(f"Dice coefficient of valid example {num_examples}: "
                          f"{dice_coefficient}")
           if plot:
+            # Save mask sizes for comparison
+            predicted_mask_sizes.append(np.sum(predicted_mask))
+            target_mask_sizes.append(np.sum(target_mask))
+
             f, axarr = plt.subplots(1, 2)
             f.suptitle(input_path)
             axarr[0].imshow(predicted_mask)
@@ -412,6 +420,22 @@ class ATLASModel(object):
 
       if num_samples != None and num_examples >= num_samples:
         break
+
+    predicted_mask_sizes = np.array(predicted_mask_sizes)
+    target_mask_sizes =np.array(target_mask_sizes)
+    args = predicted_mask_sizes.argsort()
+    predicted_mask_sizes = predicted_mask_sizes[args]
+    target_mask_sizes = target_mask_sizes[args]
+    fig, ax = plt.subplots()
+    ind = 2*np.arange(num_examples)
+    rects1 = ax.bar(ind, predicted_mask_sizes, 0.5, color='r')
+    rects2 = ax.bar(ind + 0.5, target_mask_sizes, 0.5, color='b')
+    ax.set_ylabel('Size (in pixels)')
+    ax.set_title('Predicted and Target Mask Sizes')
+    ax.set_xticks(ind + 0.25)
+    ax.set_xticklabels(0.5*ind)
+    ax.legend((rects1[0], rects2[0]), ('Predicted', 'Target'))
+    fig.savefig(os.path.join(self.FLAGS.train_dir, 'relative_sizes'))
 
     dice_coefficient_mean = dice_coefficient_total / num_examples
 

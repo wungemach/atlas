@@ -109,6 +109,9 @@ tf.app.flags.DEFINE_string("model_name", "ATLASModel",
 tf.app.flags.DEFINE_integer("slice_height", 232, "Sets the image height.")
 tf.app.flags.DEFINE_integer("slice_width", 196, "Sets the image width.")
 
+
+tf.app.flags.DEFINE_integer("num_samples", 1000, "Sets the number of examples to use in eval mode")
+
 FLAGS = tf.app.flags.FLAGS
 os.environ["CUDA_VISIBLE_DEVICES"] = str(FLAGS.gpu)
 
@@ -206,7 +209,7 @@ def main(_):
                                                         dev_input_paths,
                                                         dev_target_mask_paths,
                                                         "dev",
-                                                        num_samples=1000,
+                                                        num_samples=FLAGS.num_samples,
                                                         plot=True)
       logging.info(f"dev dice_coefficient: {dev_dice}")
   elif FLAGS.mode == "print":

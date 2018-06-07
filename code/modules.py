@@ -478,11 +478,11 @@ class DualNetFC(NeuralNetwork):
 
         # Fully connected layers
         reshape1 = tf.reshape(conv2_lower, shape=[-1, 25*25*30])  # (b, 18750)
-        fc1 = self.fc(reshape1, output_shape=256, scope_name="fc1") # (b, 256)
+        fc1 = self.fc(reshape1, output_shape=512, scope_name="fc1") # (b, 512)
         drop_fc1 = self.dropout(fc1, keep_prob=self.keep_prob, scope_name="drop_fc1")
         fc2 = self.fc(drop_fc1, output_shape=128, scope_name="fc2") # (b, 128)
         drop_fc2 = self.dropout(fc2, keep_prob=self.keep_prob, scope_name="drop_fc2")
-        fc3 = self.fc(drop_fc2, output_shape=256, scope_name="fc3") # (b, 256)
+        fc3 = self.fc(drop_fc2, output_shape=512, scope_name="fc3") # (b, 512)
         drop_fc3 = self.dropout(fc3, keep_prob=self.keep_prob, scope_name="drop_fc3")
         fc4 = self.fc(drop_fc3, output_shape=25*25*30, scope_name="fc4") # (b, 1875)
         reshape2 = tf.reshape(fc4, shape=[-1, 25, 25, 30])
@@ -688,9 +688,9 @@ class DualNetVeryFC(NeuralNetwork):
         # Convolve to introduce more channels, then pass to fully connected layers
         conv1_top = self.conv2d_relu(green_box, filter_shape=[3, 3, 1, 20], scope_name="conv1_top")  # (b, 50, 50, 20)
         reshape1_top = tf.reshape(conv1_top, shape=[-1, 50*50*20])
-        fc1_top = self.fc(reshape1_top, output_shape=1024, scope_name='fc1_top')
-        fc2_top = self.fc(fc1_top, output_shape=256, scope_name='fc2_top')
-        fc3_top = self.fc(fc2_top, output_shape=1024, scope_name='fc3_top')
+        fc1_top = self.fc(reshape1_top, output_shape=256, scope_name='fc1_top')
+        fc2_top = self.fc(fc1_top, output_shape=128, scope_name='fc2_top')
+        fc3_top = self.fc(fc2_top, output_shape=256, scope_name='fc3_top')
         fc4_top = self.fc(fc3_top, output_shape=50*50*20, scope_name='fc4_top')
         reshape2_top = tf.reshape(fc4_top, shape=[-1, 50, 50, 20])
         conv5_top = self.conv2d_relu(reshape2_top, filter_shape=[3, 3, 20, 60], scope_name="conv5_top")  # (b, 50, 50, 60)
@@ -705,9 +705,9 @@ class DualNetVeryFC(NeuralNetwork):
         conv2_lower = self.conv2d_relu(pool2_lower, filter_shape=[3, 3, 20, 30], scope_name="conv2")  # (b, 25, 25, 30)
 
         reshape1 = tf.reshape(conv2_lower, shape=[-1, 25*25*30])  # (b, 18750)
-        fc1 = self.fc(reshape1, output_shape=1024, scope_name="fc1") # (b, 1024)
+        fc1 = self.fc(reshape1, output_shape=512, scope_name="fc1") # (b, 1024)
         fc2 = self.fc(fc1, output_shape=256, scope_name="fc2") # (b, 256)
-        fc3 = self.fc(fc2, output_shape=1024, scope_name="fc3") # (b, 1024)       
+        fc3 = self.fc(fc2, output_shape=512, scope_name="fc3") # (b, 1024)       
         fc4 = self.fc(fc3, output_shape=25*25*30, scope_name="fc4") # (b, 25*25*30)
         reshape2 = tf.reshape(fc4, shape=[-1, 25, 25, 30])
 
