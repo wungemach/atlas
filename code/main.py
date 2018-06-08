@@ -205,6 +205,7 @@ def main(_):
       # Shows examples from the dev set
       _, _, dev_input_paths, dev_target_mask_paths =\
         setup_train_dev_split(FLAGS)
+
       dev_dice = atlas_model.calculate_dice_coefficient(sess,
                                                         dev_input_paths,
                                                         dev_target_mask_paths,
