@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 import utils
 from data_batcher import SliceBatchGenerator
-from modules import ConvEncoder, DeconvDecoder, OneNetFC, UNet, DualNetVeryFC, DualNetFC2, DualNet, DualNet50, DualNetMultiWindow50, DualNetFC
+from modules import ConvEncoder, DeconvDecoder, OneNetFC, DualNetSmallFC, UNet, DualNetVeryFC, DualNetFC2, DualNet, DualNet50, DualNetMultiWindow50, DualNetFC
 
 
 class ATLASModel(object):
@@ -400,20 +400,22 @@ class ATLASModel(object):
             logging.info(f"Dice coefficient of valid example {num_examples}: "
                          f"{dice_coefficient}")
           if plot:
-            # Save mask sizes for comparison
-            predicted_mask_sizes.append(np.sum(predicted_mask))
-            target_mask_sizes.append(np.sum(target_mask))
 
-            f, axarr = plt.subplots(1, 2)
-            f.suptitle(input_path)
-            axarr[0].imshow(predicted_mask)
-            axarr[0].set_title("Predicted")
-            axarr[1].imshow(target_mask)
-            axarr[1].set_title("Target")
-            examples_dir = os.path.join(self.FLAGS.train_dir, "examples")
-            if not os.path.exists(examples_dir):
-              os.makedirs(examples_dir)
-            f.savefig(os.path.join(examples_dir, str(num_examples).zfill(4)))
+            if self.FLAGS.mode == 'eval':
+              # Save mask sizes for comparison
+              predicted_mask_sizes.append(np.sum(predicted_mask))
+              target_mask_sizes.append(np.sum(target_mask))
+
+              f, axarr = plt.subplots(1, 2)
+              f.suptitle(input_path)
+              axarr[0].imshow(predicted_mask)
+              axarr[0].set_title("Predicted")
+              axarr[1].imshow(target_mask)
+              axarr[1].set_title("Target")
+              examples_dir = os.path.join(self.FLAGS.train_dir, "examples")
+              if not os.path.exists(examples_dir):
+                os.makedirs(examples_dir)
+              f.savefig(os.path.join(examples_dir, str(num_examples).zfill(4)))
 
         if num_samples != None and num_examples >= num_samples:
           break
@@ -421,7 +423,7 @@ class ATLASModel(object):
       if num_samples != None and num_examples >= num_samples:
         break
 
-    if num_samples < 200:
+    if num_samples < 200 and self.FLAGS.mode == 'eval':
       predicted_mask_sizes = np.array(predicted_mask_sizes)
       target_mask_sizes =np.array(target_mask_sizes)
       args = predicted_mask_sizes.argsort()
@@ -633,6 +635,32 @@ class DualNetATLASModel(ATLASModel):
                 keep_prob=self.keep_prob,
                 output_shape=self.input_dims,
                 scope_name="netnet")
+    self.logits_op = tf.squeeze(
+      dualnet.build_graph(tf.expand_dims(self.inputs_op, 3)), axis=3)
+
+    self.predicted_mask_probs_op = tf.sigmoid(self.logits_op,
+                                              name="predicted_mask_probs")
+    self.predicted_masks_op = tf.cast(self.predicted_mask_probs_op > 0.5,
+                                      tf.uint8,
+                                      name="predicted_masks")
+
+class DualNetSmallFCATLASModel(ATLASModel):
+  def __init__(self, FLAGS):
+    """
+    Initializes the U-Net ATLAS model, which predicts 0 for the entire mask
+    no matter what, which performs well when --use_fake_target_masks.
+
+    Inputs:
+    - FLAGS: A _FlagValuesWrapper object passed in from main.py.
+    """
+    super().__init__(FLAGS)
+
+  def build_graph(self):
+    assert(self.input_dims == self.inputs_op.get_shape().as_list()[1:])
+    dualnet = DualNetSmallFC(input_shape=self.input_dims,
+                keep_prob=self.keep_prob,
+                output_shape=self.input_dims,
+                scope_name="DualNetSmallFC")
     self.logits_op = tf.squeeze(
       dualnet.build_graph(tf.expand_dims(self.inputs_op, 3)), axis=3)
 
