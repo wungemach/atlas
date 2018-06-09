@@ -17,7 +17,7 @@ When trained by scan, which is the more practicl application, DualNetFC achieves
 
 Here are some predictions made by DualNetFC. The triplets is of the following format: (Input, Target, Prediction).
 
-![Alt text](images/Results.png?raw=true "Predictions of DualNetFC")
+![Alt text](images/results.png?raw=true "Predictions of DualNetFC")
 
 ## Further details:
 Please refer to our poster at (https://github.com/wungemach/atlas/blob/master/Poster.pdf) and our report at (**HTML**)
