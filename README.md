@@ -1,9 +1,26 @@
-#DualNetFC Network
+# DualNetFC Network
 ## Introduction
-This is a joint-work from Weston Wungemach (wungemach 'at' stanford.edu) and Beite Zhu (jupiterz 'at' stanford.edu) for the CS230 2018 Spring final project. Our work focuses on a segmentation model to detect the brain lesions from the ATLAS data set.  This repository starts as fork from the repo setup by our mentor David Eng's branch (https://github.com/gnedivad/atlas). Details for the setup are presented at the next section fo the README.
+This is a joint-work from Weston Wungemach (wungemach 'at' stanford.edu) and Beite Zhu (jupiterz 'at' stanford.edu) for the CS230 2018 Spring final project. Our work focuses on a dual path segmentation model to mask the brain lesions from the ATLAS data set.  This repository starts as fork from the repo setup by our mentor David Eng's branch (https://github.com/gnedivad/atlas). Details for the setup are presented at the next section fo the README.
+
+## Objective
+Brian lesionss exact locations and shapes are vital information for performing critical surgeries. While there exist several automated and semi-automated procedures for mapping these lesions, the industry standard is still expert hand-labeling, which is time-intensive and inefficient. Here, we implement DualNetFC: a dual-pathway network on the ATLAS dataset to produce lesion segmentation masks.
+
+## Dataset
+We analyze the ATLAS dataset, newly compiled and released by USC, containing 229 T1-weighted MRI scans labeled with a 3D mask segmenting (possibly) multiple lesions. We process this as a dataset of 43281 horizontal cross-sections.
 
 ## Model Architecture
+![Alt text](images/Model-architecture.PNG?raw=true "Model Layers")
+The input is sliced into 12 green boxes according to the dashed green grid. Each green box is 50* 50 pixels, centered by a 100 * 100 pixels blue box (possibly overlapping with other blue boxes). The model neglects a 16 * 23 margin from the input, which mostly contains no useful data. The green boxes are passed through the top path, which aims to scrutinize the detailed contours from the local information (thus no max pooling is used). On the other hand blue boxes   provide contextual information for their central green boxes through the bottom path. The output from each pair of green and blue box will be a 50 * 50 pixels box, located exactly where the input green box is. The final prediction results from patching all these boxes together with necessary paddings.
 
+## Results
+When trained by scan, which is the more practicl application, DualNetFC achieves a sharper result of 0.25 whereas the basline Atlas model only has 0.18. However our model is  only 1/5 the number of parameters comparing to that of the  Atlas model.  When trained by slices, our model achieves an 0.38 Dice coefficients while the  Atlas model 0.40. 
+
+Here are some predictions made by DualNetFC. The triplets is of the following format: (Input, Target, Prediction).
+
+![Alt text](images/Results.png?raw=true "Predictions of DualNetFC")
+
+## Further details:
+Please refer to our poster at (https://github.com/wungemach/atlas/blob/master/Poster.pdf) and our report at (**HTML**)
 
 # ATLAS (Instructions from David Eng's master branch)
 ## Setup
