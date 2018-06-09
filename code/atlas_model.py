@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 import utils
 from data_batcher import SliceBatchGenerator
-from modules import ConvEncoder, DeconvDecoder, OneNetFC, DualNetSmallFC, UNet, DualNetVeryFC, DualNetFC2, DualNet, DualNet50, DualNetMultiWindow50, DualNetFC, Atlas512
+from modules import ConvEncoder, DeconvDecoder, OneNetFC, DualNet256FC, UNet, DualNetVeryFC, DualNetBigBlue, DualNet, DualNet50, DualNetMultiWindow50, DualNetFC, Atlas512
 
 
 class ATLASModel(object):
@@ -644,7 +644,7 @@ class DualNetATLASModel(ATLASModel):
                                       tf.uint8,
                                       name="predicted_masks")
 
-class DualNetSmallFCATLASModel(ATLASModel):
+class DualNet256FCATLASModel(ATLASModel):
   def __init__(self, FLAGS):
     """
     Initializes the U-Net ATLAS model, which predicts 0 for the entire mask
@@ -657,10 +657,10 @@ class DualNetSmallFCATLASModel(ATLASModel):
 
   def build_graph(self):
     assert(self.input_dims == self.inputs_op.get_shape().as_list()[1:])
-    dualnet = DualNetSmallFC(input_shape=self.input_dims,
+    dualnet = DualNet256FC(input_shape=self.input_dims,
                 keep_prob=self.keep_prob,
                 output_shape=self.input_dims,
-                scope_name="DualNetSmallFC")
+                scope_name="DualNet256FC")
     self.logits_op = tf.squeeze(
       dualnet.build_graph(tf.expand_dims(self.inputs_op, 3)), axis=3)
 
@@ -749,7 +749,7 @@ class DualNetFCATLASModel(ATLASModel):
                                       tf.uint8,
                                       name="predicted_masks")
 
-class DualNetFC2ATLASModel(ATLASModel):
+class DualNetBigBlueATLASModel(ATLASModel):
   def __init__(self, FLAGS):
     """
     Initializes the U-Net ATLAS model, which predicts 0 for the entire mask
@@ -762,10 +762,10 @@ class DualNetFC2ATLASModel(ATLASModel):
 
   def build_graph(self):
     assert(self.input_dims == self.inputs_op.get_shape().as_list()[1:])
-    dualnet = DualNetFC2(input_shape=self.input_dims,
+    dualnet = DualNetBigBlue(input_shape=self.input_dims,
                 keep_prob=self.keep_prob,
                 output_shape=self.input_dims,
-                scope_name="DualNetFC2")
+                scope_name="DualNetBigBlue")
     self.logits_op = tf.squeeze(
       dualnet.build_graph(tf.expand_dims(self.inputs_op, 3)), axis=3)
 
