@@ -1,4 +1,11 @@
-# ATLAS
+#DualNetFC Network
+## Introduction
+This is a joint-work from Weston Wungemach (wungemach 'at' stanford.edu) and Beite Zhu (jupiterz 'at' stanford.edu) for the CS230 2018 Spring final project. Our work focuses on a segmentation model to detect the brain lesions from the ATLAS data set.  This repository starts as fork from the repo setup by our mentor David Eng's branch (https://github.com/gnedivad/atlas). Details for the setup are presented at the next section fo the README.
+
+## Model Architecture
+
+
+# ATLAS (Instructions from David Eng's master branch)
 ## Setup
 Visit the [ATLAS website](http://fcon_1000.projects.nitrc.org/indi/retro/atlas.html) and complete the [form](https://docs.google.com/forms/d/e/1FAIpQLSclH8padHr9zwdQVx9YY_yeM_4OqD1OQFvYcYpAQKaqC6Vscg/viewform) to request access for the dataset.
 
@@ -7,7 +14,11 @@ I've arranged for the maintainers of the dataset to approve all requests from st
 ### Mac OS or Linux users
 Clone the repo then run the `get-started.sh` script. You will be prompted to enter the encryption key emailed to you.
 ```bash
-$ git clone --recurse-submodules https://github.com/gnedivad/atlas
+$ git clone --recurse-submodules https://github.com/gnedivad/atlas (#To clone the master branch)
+```
+To clone ours:
+```bash
+$ git clone --recurse-submodules https://github.com/wungemach/atlas
 $ cd atlas
 $ sh get-started.sh
 ```
