@@ -1,6 +1,6 @@
 # DualNetFC Network
 ## Introduction
-This is a joint-work by Weston Ungemach (westonu 'at' stanford.edu) and Beite Zhu (jupiterz 'at' stanford.edu) for the CS230 2018 Spring final project. Our work focuses on a dual path segmentation model to mask the brain lesions from the ATLAS data set.  This repository started as fork from the repo setup by our mentor David Eng's branch (https://github.com/gnedivad/atlas). Details for the setup are presented at the next section fo the README.
+This is a joint-work by Weston Ungemach (westonu 'at' stanford.edu) and Beite Zhu (jupiterz 'at' stanford.edu) for the CS230 2018 Spring final project. Our work focuses on a dual path segmentation model to mask the brain lesions from the ATLAS data set.  This repository started as fork from the repo setup by our mentor David Eng's branch (https://github.com/gnedivad/atlas). Details for the setup are presented at the next section of the README.
 
 ## Objective
 Brian lesionss exact locations and shapes are vital information for performing critical surgeries. While there exist several automated and semi-automated procedures for mapping these lesions, the industry standard is still expert hand-labeling, which is time-intensive and inefficient. Here, we implement DualNetFC: a dual-pathway network on the ATLAS dataset to produce lesion segmentation masks.
