@@ -1,6 +1,0 @@
-github test
-https://stackoverflow.com/questions/2432764/change-the-uri-url-for-a-remote-git-repository
-https://stackoverflow.com/questions/4089430/how-can-i-determine-the-url-that-a-local-git-repository-was-originally-cloned-fr
-
-
-do whatever you want
