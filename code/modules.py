@@ -810,3 +810,36 @@ class DualNetVeryFC(NeuralNetwork):
       
     return out
 
+class Atlas512(NeuralNetwork):
+  def __init__(self, input_shape, keep_prob, output_shape, scope_name="Atlas512"):
+    self.input_shape = input_shape
+    self.keep_prob = keep_prob
+    self.output_shape = output_shape
+    self.scope_name = scope_name
+
+  def build_graph(self, input):
+    with tf.variable_scope(self.scope_name):
+      conv1 = self.conv2d_relu(input, filter_shape=[3, 3, 1, 8], scope_name="conv1")  # (232, 196, 8)
+      pool1 = self.maxpool2d(conv1, scope_name="pool1")  # (116, 98, 8)
+      drop1 = self.dropout(pool1, keep_prob=self.keep_prob, scope_name="drop1")
+      conv2 = self.conv2d_relu(drop1, filter_shape=[5, 5, 8, 16], scope_name="conv2")  # (116, 98, 16)
+      pool2 = self.maxpool2d(conv2, scope_name="pool2")  # (58, 49, 16)
+      drop2 = self.dropout(pool2, keep_prob=self.keep_prob, scope_name="drop2")
+      drop2 = tf.reshape(drop2, shape=[-1, 58*49*16])  # (45472,)
+      fc1 = self.fc(drop2, output_shape=512, scope_name="fc1")
+      drop3 = self.dropout(fc1, keep_prob=self.keep_prob, scope_name="drop3")
+      fc2 = self.fc(drop3, output_shape=256, scope_name="fc2")
+
+      fc3 = self.fc(fc2, output_shape=512, scope_name="fc3")
+      drop4 = self.dropout(fc1, keep_prob=self.keep_prob, scope_name="drop4")
+      fc4 = self.fc(drop4, output_shape=58*49*16, scope_name="fc4")
+      drop5 = self.dropout(fc4, keep_prob=self.keep_prob, scope_name="drop5")
+      drop5 = tf.reshape(drop5, shape=[-1, 58, 49, 16])
+      up1 = self.upsample(drop5, scope_name="up1", factor=[2, 2])  # (116, 98, 16)
+      deconv1 = self.deconv2d(up1, filter_shape=[5, 5], num_outputs=8, scope_name="deconv1")  # (116, 98, 8)
+      up2 = self.upsample(deconv1, scope_name="up2", factor=[2, 2])
+      deconv2 = self.deconv2d(up2, filter_shape=[3, 3], num_outputs=1, scope_name="deconv2")  # (232, 196, 1)
+      out = tf.identity(deconv2, name="out")
+
+    return out
+
