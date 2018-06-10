@@ -20,7 +20,7 @@ Here are some predictions made by DualNetFC. The triplets is of the following fo
 ![Alt text](images/results.png?raw=true "Predictions of DualNetFC")
 
 ## Further details:
-Please refer to our poster at (https://github.com/wungemach/atlas/blob/master/Poster.pdf) and our report at (**HTML**)
+Please refer to our poster at (https://github.com/wungemach/atlas/blob/master/Poster.pdf) and our report at (https://github.com/wungemach/atlas/blob/master/dualnetpaper.pdf)
 
 # ATLAS (Instructions from David Eng's master branch)
 ## Setup
